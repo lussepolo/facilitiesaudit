@@ -450,7 +450,8 @@ async function saveToSheets(entry){
       room_number:entry.areas[a.id]?.roomNumber||"",
       area_score:(()=>{const it=(entry.areas[a.id]?.items||[]).filter(s=>s!==null);return it.length?parseFloat(avg(it).toFixed(2)):null;})(),
       overall_score:parseFloat(entry.overallScore.toFixed(2)),
-      notes:entry.areas[a.id]?.notes||"",photo_attached:!!entry.areas[a.id]?.photo,
+      notes:entry.areas[a.id]?.notes||"",
+      photo_data:entry.areas[a.id]?.photo||null,
       created_at:new Date().toISOString(),
     }));
     await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows})});
