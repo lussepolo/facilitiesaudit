@@ -1,0 +1,1173 @@
+import { useState, useEffect, useRef } from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const SHEETS_URL = import.meta.env.VITE_SHEETS_URL || "";
+const SHEETS_ON  = SHEETS_URL.startsWith("https://script.google.com");
+
+// ─── CSS ──────────────────────────────────────────────────────────────────────
+const CSS = `
+  @import url('https://unpkg.com/@fontsource/dm-sans/400.css');
+  @import url('https://unpkg.com/@fontsource/dm-sans/500.css');
+  @import url('https://unpkg.com/@fontsource/dm-sans/600.css');
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  .app {
+    font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    background:#EEF1F6;
+    min-height:100vh;
+    color:#0F172A;
+    max-width:430px;
+    margin:0 auto;
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(10px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .au { animation:fadeUp .3s ease both; }
+  .tap { cursor:pointer; transition:opacity .12s; }
+  .tap:active { opacity:.7; }
+  .btn-scale { transition:transform .1s; cursor:pointer; }
+  .btn-scale:active { transform:scale(.97); }
+  .score-btn {
+    width:40px; height:40px; border-radius:50%; border:1.5px solid;
+    font-size:14px; font-weight:800;
+    font-family:'DM Sans',system-ui,sans-serif;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:transform .1s;
+    flex-shrink:0;
+  }
+  .score-btn:active { transform:scale(.84); }
+  textarea, input { font-family:'DM Sans',system-ui,sans-serif; outline:none; }
+  textarea:focus, input:focus {
+    border-color:#F5C200 !important;
+    box-shadow:0 0 0 3px rgba(245,194,0,.18) !important;
+  }
+  input[type=file] { display:none; }
+`;
+
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+const INK   = "#0F172A"; // slate-950
+const INK2  = "#1E293B"; // slate-800
+const MUTED = "#64748B"; // slate-500
+const FAINT = "#94A3B8"; // slate-400
+const PAPER = "#FFFFFF";
+const SHEET = "#F8FAFC"; // slate-50
+const RING  = "#E2E8F0"; // slate-200
+const BG    = "#EEF1F6";
+const YELLOW= "#F5C200";
+
+const SC={
+  0:{bg:"#FEE2E2",br:"#FCA5A5",tx:"#7F1D1D",lbl:"Crítico"},
+  1:{bg:"#FEE2E2",br:"#FECACA",tx:"#991B1B",lbl:"Inaceitável"},
+  2:{bg:"#FFEDD5",br:"#FED7AA",tx:"#9A3412",lbl:"Abaixo"},
+  3:{bg:"#FEF3C7",br:"#FDE68A",tx:"#92400E",lbl:"Regular"},
+  4:{bg:"#DBEAFE",br:"#BFDBFE",tx:"#1E3A8A",lbl:"Bom"},
+  5:{bg:"#DCFCE7",br:"#BBF7D0",tx:"#14532D",lbl:"Excelente"},
+};
+
+const scoreColor=s=>{
+  if(s===null||s===undefined)return{bg:SHEET,br:RING,tx:FAINT};
+  if(s>=4.5)return{bg:"#DCFCE7",br:"#6EE7B7",tx:"#065F46"};
+  if(s>=4.0)return{bg:"#D1FAE5",br:"#6EE7B7",tx:"#065F46"};
+  if(s>=3.0)return{bg:"#FEF3C7",br:"#FDE68A",tx:"#92400E"};
+  if(s>=2.0)return{bg:"#FFEDD5",br:"#FED7AA",tx:"#9A3412"};
+  return{bg:"#FEE2E2",br:"#FECACA",tx:"#991B1B"};
+};
+
+const itemState=s=>{
+  if(s===null)return"none";
+  if(s>=4)return"pass";
+  if(s>=2)return"flag";
+  return"fail";
+};
+
+const avg=arr=>arr.length===0?null:arr.reduce((a,b)=>a+b,0)/arr.length;
+
+// ─── Colors by area type ──────────────────────────────────────────────────────
+const C_BATH="#4A3FC0",C_CLASS="#059669",C_EXT="#B45309",C_HALL="#0369A1",C_SPEC="#7C3AED",C_REST="#9333EA";
+
+// ─── AREAS ───────────────────────────────────────────────────────────────────
+const AREAS=[
+  {id:"portaria1",short:"Portaria 1",label:"Portaria 1",color:C_EXT,isClassroom:false,items:[
+    ["Entrada principal varrida e limpa","Sem folhas, bitucas, resíduos ou poças de água"],
+    ["Pátio e jardim sem resíduos visíveis","Lixo recolhido. Calçadas desobstruídas"],
+    ["Portão e guarita sem sujeira visível","Vidros, piso e superfícies da guarita limpos"],
+    ["Lixeiras externas esvaziadas","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"showroom",short:"Showroom",label:"Showroom",color:C_SPEC,isClassroom:false,items:[
+    ["Recepção — piso com varrição e catação realizada","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Mesas e cadeiras da recepção higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Portas e maçanetas da recepção higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Salão — piso com varrição e catação realizada","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Mesas e cadeiras do salão higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Portas e maçanetas do salão higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Árvore decorativa sem sujeira e pó","Árvore isenta de pó e qualquer sujidade"],
+  ]},
+  {id:"sala_ops",short:"Sala de Ops",label:"Sala de Operações",color:C_HALL,isClassroom:false,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Mesas higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"atrium_banheiro",short:"Atrium — WC",label:"Atrium — Banheiros e sanitários",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+  {id:"atrium_ext",short:"Atrium — Externo",label:"Atrium — Área externa e hall",color:C_EXT,isClassroom:false,items:[
+    ["Piso da área interna varrido e catação realizada","Piso limpo, isento de qualquer tipo de sujidade"],
+    ["Entrada principal varrida e limpa","Sem folhas, resíduos ou poças de água"],
+    ["Pátio e jardim sem resíduos visíveis","Lixo recolhido. Calçadas desobstruídas"],
+    ["Portão e guarita sem sujeira visível","Vidros, piso e superfícies da guarita limpos"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+    ["Calçada sem manchas de óleo ou resíduos","Especialmente na área de chegada de veículos"],
+  ]},
+  {id:"playground1",short:"Playground 1",label:"Playground 1",color:C_EXT,isClassroom:false,items:[
+    ["Piso, terra e grama com varrição e catação realizada","Lixo recolhido, isento de qualquer tipo de sujidade"],
+    ["Brinquedos limpos isentos de pó, terra e areia","Sem marcas de sujeiras aparente"],
+    ["Portas, maçanetas e muros de vidro limpos","Sem marcas de sujeiras aparente"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"blocoa_corr",short:"Bloco A — Corredores",label:"Bloco A — Corredores e circulação",color:C_HALL,isClassroom:false,items:[
+    ["Piso varrido e lavado","Sem resíduos, manchas ou marcas de pisada visíveis"],
+    ["Paredes sem manchas ou riscos recentes","Marcas novas registradas e comunicadas para reparo"],
+    ["Vidros e esquadrias limpos","Sem marcas de mãos, respingos ou fuligem"],
+    ["Lixeiras estratégicas esvaziadas","Nunca acima de 2/3 de capacidade"],
+    ["Sinalização limpa e visível","Placas sem poeira, marcas ou adesivos indevidos"],
+    ["Bebedouros higienizados","Cuba, torneira e frontal sem manchas ou depósito de cal"],
+  ]},
+  {id:"domo_banheiro",short:"Domo — WC",label:"Domo — Banheiros e sanitários",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+  {id:"domo_ext",short:"Domo — Externo",label:"Domo — Área externa e hall",color:C_EXT,isClassroom:false,items:[
+    ["Piso da área interna varrido e catação realizada","Piso limpo, isento de qualquer tipo de sujidade"],
+    ["Entrada principal varrida e limpa","Sem folhas, resíduos ou poças de água"],
+    ["Pátio e jardim sem resíduos visíveis","Lixo recolhido. Calçadas desobstruídas"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+    ["Calçada sem manchas de óleo ou resíduos","Especialmente na área de chegada de veículos"],
+  ]},
+  {id:"playground2",short:"Playground 2",label:"Playground 2",color:C_EXT,isClassroom:false,items:[
+    ["Piso, terra e grama com varrição e catação realizada","Lixo recolhido, isento de qualquer tipo de sujidade"],
+    ["Brinquedos limpos isentos de pó, terra e areia","Sem marcas de sujeiras aparente"],
+    ["Portas, maçanetas e muros de vidro limpos","Sem marcas de sujeiras aparente"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"sala_early",short:"Early Years",label:"Salas de aula — Early Years",color:C_CLASS,isClassroom:true,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Carteiras e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade ao início da aula"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"sala_reuniao",short:"Sala de Reunião",label:"Salas de Reunião",color:C_CLASS,isClassroom:true,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Mesas e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"sala_toddle",short:"Toddle",label:"Salas de aula — Toddle",color:C_CLASS,isClassroom:true,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Carteiras e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade ao início da aula"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"sala_trabalho",short:"Sala de Trabalho",label:"Sala de Trabalho Pequena",color:C_CLASS,isClassroom:true,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Mesas e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"auditorio",short:"Auditório",label:"Auditório",color:C_SPEC,isClassroom:false,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Cadeiras limpas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"auditorio_wc",short:"Auditório — WC",label:"Auditório — Hall Piano — Banheiros",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+  {id:"sala_ls",short:"Lower School",label:"Sala de aula — Lower School",color:C_CLASS,isClassroom:true,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Carteiras e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade ao início da aula"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"authors_balcony",short:"Author's Balcony",label:"Author's Balcony",color:C_SPEC,isClassroom:false,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Futons limpos","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"biblioteca",short:"Biblioteca",label:"Biblioteca",color:C_SPEC,isClassroom:false,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Mesas e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"biblioteca_wc",short:"Biblioteca — WC",label:"Biblioteca — Banheiros e sanitários",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+  {id:"ls_cothinking",short:"LS Co-Thinking",label:"LS Co-Thinking",color:C_CLASS,isClassroom:false,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Mesas e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"skate_park",short:"Skate Park",label:"Skate Park",color:C_EXT,isClassroom:false,items:[
+    ["Piso da área externa — varrição e catação realizada","Lixo recolhido, isento de qualquer tipo de sujidade"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"quadra_vermelha",short:"Quadra Vermelha",label:"Quadra Vermelha",color:C_EXT,isClassroom:false,items:[
+    ["Piso da quadra varrido, limpo e seco — catação realizada","Sem terra, folhas, resíduos diversos ou poças de água"],
+  ]},
+  {id:"casa_arvore",short:"Casa da Árvore",label:"Área da Casa da Árvore e Academia",color:C_EXT,isClassroom:false,items:[
+    ["Piso e grama com varrição e catação realizada","Lixo recolhido, isento de qualquer tipo de sujidade"],
+    ["Brinquedos limpos isentos de pó e terra","Sem marcas de sujeiras aparente"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"quadra_society",short:"Quadra Society",label:"Quadra Society",color:C_EXT,isClassroom:false,items:[
+    ["Grama da quadra varrida, limpa e seca — catação realizada","Sem terra, folhas, resíduos diversos ou poças de água"],
+  ]},
+  {id:"piscina",short:"Piscina",label:"Área da Piscina",color:C_HALL,isClassroom:false,items:[
+    ["Piso seco — varrição e catação realizada","Piso isento de qualquer tipo de sujidade"],
+    ["Limpeza dos vidros realizada","Vidro isento de manchas e sujeiras"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"vestiario_piscina",short:"Vestiário — Piscina",label:"Vestiário da Piscina",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso limpo, seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+  {id:"patio_hs",short:"Pátio HS",label:"Pátio Externo High School",color:C_EXT,isClassroom:false,items:[
+    ["Piso do pátio varrido — catação realizada","Piso limpo, isento de qualquer tipo de sujidade"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"sala_hs",short:"High School",label:"Salas de aula — High School",color:C_CLASS,isClassroom:true,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Carteiras e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade ao início da aula"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"hs_corr",short:"HS — Hall",label:"High School — Hall, corredores e circulação",color:C_HALL,isClassroom:false,items:[
+    ["Piso varrido e lavado","Sem resíduos, manchas ou marcas de pisada visíveis"],
+    ["Paredes sem manchas ou riscos recentes","Marcas novas registradas e comunicadas para reparo"],
+    ["Vidros e esquadrias limpos","Sem marcas de mãos, respingos ou fuligem"],
+    ["Lixeiras estratégicas esvaziadas","Nunca acima de 2/3 de capacidade"],
+    ["Sinalização limpa e visível","Placas sem poeira, marcas ou adesivos indevidos"],
+    ["Bebedouros higienizados","Cuba, torneira e frontal sem manchas ou depósito de cal"],
+  ]},
+  {id:"hs_wc",short:"HS — WC",label:"High School — Banheiros e sanitários",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+  {id:"quadra_azul",short:"Quadra Azul",label:"Quadra Azul",color:C_EXT,isClassroom:false,items:[
+    ["Piso da quadra varrido, limpo e seco — catação realizada","Sem terra, folhas, resíduos diversos ou poças de água"],
+  ]},
+  {id:"patio_middle",short:"Pátio Middle",label:"Pátio Middle",color:C_EXT,isClassroom:false,items:[
+    ["Piso do pátio varrido — catação realizada","Piso limpo, isento de qualquer tipo de sujidade"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"sala_middle",short:"Middle",label:"Salas de aula — Middle",color:C_CLASS,isClassroom:true,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Carteiras e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade ao início da aula"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"middle_wc",short:"Middle — WC",label:"Middle — Banheiros e sanitários",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+  {id:"patio_seniors",short:"Pátio Seniors",label:"Pátio Senior's Hub",color:C_EXT,isClassroom:false,items:[
+    ["Piso do pátio varrido — catação realizada","Piso limpo, isento de qualquer tipo de sujidade"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"seniors_wc",short:"Seniors — WC",label:"Pátio Senior's Hub — Banheiros",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+  {id:"sala_seniors",short:"Seniors Hub",label:"Salas de aula — Senior's Hub",color:C_CLASS,isClassroom:true,items:[
+    ["Piso varrido e sem resíduos visíveis","Nenhum papel, sujeira ou resíduo visível a olho nu"],
+    ["Piso lavado / úmido passado","Piso limpo sem manchas, marcas de pisada ou resíduos"],
+    ["Carteiras e cadeiras higienizadas","Superfícies sem poeira, marcas ou resíduos"],
+    ["Lixeiras esvaziadas e com saco limpo","Lixeira nunca acima de 2/3 de capacidade ao início da aula"],
+    ["Portas e maçanetas higienizadas","Sem marcas de dedo, oleosidade ou manchas visíveis"],
+    ["Janelas e persianas sem poeira acumulada","Persianas abertas não revelam acúmulo de poeira"],
+  ]},
+  {id:"quadra_pickleball",short:"Pickleball",label:"Quadra Pickleball",color:C_EXT,isClassroom:false,items:[
+    ["Piso da quadra varrido, limpo e seco — catação realizada","Sem terra, folhas, resíduos diversos ou poças de água"],
+  ]},
+  {id:"quadra_foursquare",short:"Foursquare",label:"Quadra Foursquare",color:C_EXT,isClassroom:false,items:[
+    ["Piso da quadra varrido, limpo e seco — catação realizada","Sem terra, folhas, resíduos diversos ou poças de água"],
+  ]},
+  {id:"estacionamento",short:"Estacionamento",label:"Estacionamento",color:C_EXT,isClassroom:false,items:[
+    ["Piso de área externa — varrição e catação realizada","Lixo recolhido, isento de qualquer tipo de sujidade"],
+    ["Lixeiras externas esvaziadas diariamente","Nunca acima de 2/3 de capacidade em nenhum horário"],
+  ]},
+  {id:"refeitorio",short:"Refeitório",label:"Refeitório",color:C_REST,isClassroom:false,items:[
+    ["Mesas higienizadas entre turnos","Sem resíduos, manchas ou umidade após cada refeição"],
+    ["Cadeiras limpas e sem resíduos embaixo","Incluindo pés das cadeiras e embaixo das mesas"],
+    ["Piso varrido e lavado após cada refeição","Sem resíduos de alimento em nenhum ponto do piso"],
+    ["Estações de higiene abastecidas","Álcool gel, papel e dispenser funcionando"],
+    ["Lixeiras separadas: orgânico e reciclável","Identificadas e com sacos limpos após cada turno"],
+    ["Bancadas de apoio higienizadas","Sem resíduos, manchas ou utensílios abandonados"],
+  ]},
+  {id:"refeitorio_wc",short:"Refeitório — WC",label:"Refeitório — Banheiros e sanitários",color:C_BATH,isClassroom:false,items:[
+    ["Vasos e assentos higienizados","Sem manchas, resíduos ou odor. Assento sem dano visível"],
+    ["Pias e torneiras sem manchas de cal ou sabão","Superfície brilhante. Torneira sem vazamento"],
+    ["Espelhos limpos e sem marcas","Sem manchas de água, sabão ou dedos"],
+    ["Piso seco e sem poças","Nenhum risco de escorregamento. Ralos desobstruídos"],
+    ["Dispensers de sabão e papel abastecidos","Nunca vazios durante o horário de funcionamento"],
+    ["Lixeiras fechadas e com saco limpo","Tampa funcionando. Saco sem extravasamento"],
+    ["Ausência de odor desagradável","Ambiente ventilado e sem odor perceptível"],
+  ]},
+];
+
+const SLOTS=[
+  {id:"0700",time:"07:00",label:"Abertura",           classroomsIncluded:true },
+  {id:"1130",time:"11:30",label:"Intervalo do almoço",classroomsIncluded:false},
+  {id:"1430",time:"14:30",label:"Intervalo da tarde", classroomsIncluded:false},
+  {id:"1630",time:"16:30",label:"Encerramento",       classroomsIncluded:true },
+];
+
+const areasForSlot=slot=>AREAS.filter(a=>slot.classroomsIncluded||!a.isClassroom);
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const todaySP=()=>{
+  const d=new Date(new Date().toLocaleString("en-US",{timeZone:"America/Sao_Paulo"}));
+  return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
+const fmtDate=s=>{
+  const[y,m,d]=s.split("-");
+  return`${parseInt(d)} ${["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][parseInt(m)-1]} ${y}`;
+};
+const fmtShort=s=>{const[,m,d]=s.split("-");return`${parseInt(d)}/${m}`;};
+const weeksAgo=n=>{const d=new Date();d.setDate(d.getDate()-n*7);return d.toISOString().split("T")[0];};
+const startOfWeek=d=>{const dt=new Date(d+"T12:00:00");dt.setDate(dt.getDate()-dt.getDay());return dt.toISOString().split("T")[0];};
+
+const emptyAudit=()=>({
+  areas:Object.fromEntries(AREAS.map(a=>[a.id,{items:Array(a.items.length).fill(null),notes:"",photo:null,roomNumber:""}]))
+});
+
+function resizePhoto(file){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=800;let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+        const canvas=document.createElement("canvas");
+        canvas.width=w;canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL("image/jpeg",0.6));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+const Q_KEY="ec_q_v5",LH_KEY="ec_lh_v5";
+const qLoad=()=>{try{return JSON.parse(localStorage.getItem(Q_KEY)||"[]");}catch{return[];}};
+const qSave=q=>{try{localStorage.setItem(Q_KEY,JSON.stringify(q));}catch{}};
+const qAdd=e=>{const q=qLoad();q.push(e);qSave(q);};
+const lhLoad=()=>{try{return JSON.parse(localStorage.getItem(LH_KEY)||"[]");}catch{return[];}};
+const lhSave=h=>{try{localStorage.setItem(LH_KEY,JSON.stringify(h.slice(0,200)));}catch{}};
+
+async function saveToSheets(entry){
+  if(!SHEETS_ON)return;
+  const slot=SLOTS.find(s=>s.id===entry.slotId);
+  const audited=slot?areasForSlot(slot):AREAS;
+  try{
+    const rows=audited.map(a=>({
+      id:entry.id,campus:"SP",date:entry.date,slot_id:entry.slotId,slot_label:entry.slotLabel,
+      auditor:entry.auditor,area_id:a.id,area_label:a.label,
+      room_number:entry.areas[a.id]?.roomNumber||"",
+      area_score:(()=>{const it=(entry.areas[a.id]?.items||[]).filter(s=>s!==null);return it.length?parseFloat(avg(it).toFixed(2)):null;})(),
+      overall_score:parseFloat(entry.overallScore.toFixed(2)),
+      notes:entry.areas[a.id]?.notes||"",photo_attached:!!entry.areas[a.id]?.photo,
+      created_at:new Date().toISOString(),
+    }));
+    await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows})});
+  }catch{qAdd(entry);}
+}
+
+async function syncQueue(){
+  if(!SHEETS_ON)return 0;
+  const q=qLoad();if(!q.length)return 0;
+  let ok=0;const rem=[];
+  for(const e of q){try{await saveToSheets(e);ok++;}catch{rem.push(e);}}
+  qSave(rem);return ok;
+}
+
+// ─── Design components ────────────────────────────────────────────────────────
+
+// Pill badge
+function Pill({children, tone="neutral"}){
+  const t={
+    neutral:{bg:SHEET,color:MUTED,border:RING},
+    dark:   {bg:INK,  color:"#fff",border:INK},
+    good:   {bg:"#DCFCE7",color:"#065F46",border:"#BBF7D0"},
+    warn:   {bg:"#FEF3C7",color:"#92400E",border:"#FDE68A"},
+    bad:    {bg:"#FEE2E2",color:"#991B1B",border:"#FECACA"},
+    yellow: {bg:YELLOW,color:INK,border:YELLOW},
+  }[tone]||{bg:SHEET,color:MUTED,border:RING};
+  return(
+    <span style={{display:"inline-flex",alignItems:"center",padding:"3px 10px",borderRadius:99,border:`1px solid ${t.border}`,background:t.bg,color:t.color,fontSize:11,fontWeight:700,letterSpacing:"0.02em"}}>
+      {children}
+    </span>
+  );
+}
+
+// Score ring SVG
+function ScoreRing({score,size=100}){
+  const r=38,circ=2*Math.PI*r;
+  const offset=circ-(score/5)*circ;
+  const col=score>=4?"#10B981":score>=3?"#F59E0B":"#F43F5E";
+  return(
+    <div style={{position:"relative",width:size,height:size,display:"grid",placeItems:"center"}}>
+      <svg width={size} height={size} viewBox="0 0 100 100" style={{transform:"rotate(-90deg)"}} aria-hidden="true">
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="10"/>
+        <circle cx="50" cy="50" r={r} fill="none" stroke="white" strokeWidth="10"
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+          style={{transition:"stroke-dashoffset .5s ease"}}/>
+      </svg>
+      <div style={{position:"absolute",textAlign:"center",color:"#fff"}}>
+        <div style={{fontSize:size>90?28:20,fontWeight:900,letterSpacing:"-0.04em",lineHeight:1}}>{score.toFixed(1)}</div>
+        <div style={{fontSize:8,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",opacity:.55,marginTop:2}}>nota</div>
+      </div>
+    </div>
+  );
+}
+
+// Item state icon
+function StateIcon({state}){
+  const cfg={
+    pass:{bg:"#DCFCE7",color:"#065F46",symbol:"✓"},
+    flag:{bg:"#FEF3C7",color:"#92400E",symbol:"!"},
+    fail:{bg:"#FEE2E2",color:"#991B1B",symbol:"✗"},
+    none:{bg:SHEET,    color:FAINT,    symbol:"·"},
+  }[state]||{bg:SHEET,color:FAINT,symbol:"·"};
+  return(
+    <div style={{width:36,height:36,borderRadius:10,background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14,fontWeight:900,color:cfg.color}}>
+      {cfg.symbol}
+    </div>
+  );
+}
+
+// Score buttons row
+function ScoreRow({value,onChange}){
+  return(
+    <div style={{display:"flex",gap:5,justifyContent:"space-between"}}>
+      {[0,1,2,3,4,5].map(s=>{
+        const c=SC[s];const on=value===s;
+        return <button key={s} className="score-btn" onClick={()=>onChange(s)}
+          style={{background:on?c.bg:"transparent",borderColor:on?c.br:RING,color:on?c.tx:FAINT,fontWeight:900}}>{s}</button>;
+      })}
+    </div>
+  );
+}
+
+// Photo capture button
+function PhotoCapture({photo,onPhoto,color}){
+  const ref=useRef();
+  const handleFile=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    const b64=await resizePhoto(f);onPhoto(b64);
+  };
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10}}>
+      <input ref={ref} type="file" accept="image/*" capture="environment" onChange={handleFile}/>
+      {photo?(
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <img src={photo} onClick={()=>ref.current.click()} alt="foto"
+            style={{width:56,height:56,borderRadius:12,objectFit:"cover",border:`2px solid ${color}`,cursor:"pointer"}}/>
+          <div>
+            <p style={{fontSize:11,fontWeight:700,color,marginBottom:3}}>Foto anexada</p>
+            <button onClick={()=>ref.current.click()}
+              style={{fontSize:10,color:MUTED,background:SHEET,border:`1px solid ${RING}`,borderRadius:8,padding:"2px 10px",fontFamily:"inherit",cursor:"pointer"}}>
+              Trocar
+            </button>
+          </div>
+        </div>
+      ):(
+        <button onClick={()=>ref.current.click()}
+          style={{display:"flex",alignItems:"center",gap:8,padding:"9px 16px",borderRadius:12,
+            border:`1.5px dashed ${RING}`,background:"transparent",color:MUTED,
+            fontSize:12,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Adicionar foto
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Card wrapper
+function Card({children, pad="1.1rem 1.25rem", radius=20, style={}}){
+  return(
+    <div style={{background:PAPER,borderRadius:radius,padding:pad,boxShadow:"0 1px 3px rgba(15,23,42,.06)",border:`1px solid ${RING}`,...style}}>
+      {children}
+    </div>
+  );
+}
+
+// Dark card
+function DarkCard({children, pad="1.25rem", radius=24, style={}}){
+  return(
+    <div style={{background:INK,borderRadius:radius,padding:pad,...style}}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Tela: Nome ───────────────────────────────────────────────────────────────
+function NameScreen({onSet}){
+  const[name,setName]=useState(()=>localStorage.getItem("ec_auditor")||"");
+  return(
+    <div className="au" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:"2rem"}}>
+      <div style={{marginBottom:"1.75rem",textAlign:"center"}}>
+        <div style={{width:48,height:48,borderRadius:14,background:YELLOW,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1.25rem"}}>
+          <span style={{fontSize:14,fontWeight:900,color:INK,letterSpacing:"-0.03em"}}>EC</span>
+        </div>
+        <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 14px",borderRadius:99,background:INK,marginBottom:16}}>
+          <span style={{fontSize:10,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:"0.15em"}}>Auditoria de Espaços</span>
+        </div>
+        <h1 style={{fontSize:34,fontWeight:900,color:INK,letterSpacing:"-0.05em",lineHeight:1.1,marginBottom:8}}>Escola Concept<br/>São Paulo</h1>
+        <p style={{fontSize:13,color:MUTED,lineHeight:1.6}}>Qualidade operacional · Ciclo 2026</p>
+      </div>
+      <div style={{width:"100%",maxWidth:320}}>
+        <p style={{fontSize:10,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Seu nome</p>
+        <input value={name} onChange={e=>setName(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&name.trim()&&onSet(name.trim())}
+          placeholder="ex: Ana Lima"
+          style={{width:"100%",fontSize:15,fontWeight:500,padding:"14px 16px",border:`1.5px solid ${RING}`,borderRadius:14,background:PAPER,color:INK,marginBottom:12}}/>
+        <button onClick={()=>name.trim()&&onSet(name.trim())} className="btn-scale"
+          disabled={!name.trim()}
+          style={{width:"100%",padding:"15px",borderRadius:14,border:"none",fontFamily:"inherit",
+            fontSize:14,fontWeight:900,letterSpacing:"0.01em",
+            background:name.trim()?INK:"#E2E8F0",
+            color:name.trim()?"#fff":FAINT,cursor:name.trim()?"pointer":"default"}}>
+          Entrar →
+        </button>
+        {!SHEETS_ON&&(
+          <p style={{marginTop:12,fontSize:11,color:FAINT,textAlign:"center",lineHeight:1.6}}>
+            Dados salvos neste dispositivo.<br/>Configure SHEETS_URL para persistir na planilha.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tela: Home ───────────────────────────────────────────────────────────────
+function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,pending}){
+  const dayAudits=history.filter(a=>a.date===date);
+  const dayAvg=avg(dayAudits.map(a=>a.overallScore).filter(Boolean));
+  const alerts=dayAudits.filter(a=>a.overallScore<4).length;
+
+  return(
+    <div className="au">
+      {/* Nav */}
+      <div style={{padding:"1rem 1rem 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:32,height:32,borderRadius:9,background:YELLOW,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <span style={{fontSize:11,fontWeight:900,color:INK}}>EC</span>
+          </div>
+          <div>
+            <p style={{fontSize:10,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",lineHeight:1}}>Qualidade dos Espaços</p>
+            <p style={{fontSize:11,fontWeight:600,color:INK,lineHeight:1.3}}>{fmtDate(date)}</p>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {pending>0&&<Pill tone="warn">{pending} offline</Pill>}
+          <span style={{fontSize:11,fontWeight:600,color:MUTED}}>{auditor}</span>
+        </div>
+      </div>
+
+      <div style={{padding:"0.75rem 1rem",display:"flex",flexDirection:"column",gap:10}}>
+        {/* Hero dark card */}
+        <DarkCard>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
+            <div>
+              <p style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.18em",marginBottom:6}}>Hoje</p>
+              <p style={{fontSize:42,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:1}}>
+                {dayAvg?dayAvg.toFixed(1):"—"}
+              </p>
+              <p style={{fontSize:12,color:"rgba(255,255,255,.5)",marginTop:4}}>Média do dia</p>
+            </div>
+            {dayAvg&&<ScoreRing score={dayAvg} size={88}/>}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+            {[
+              [`${dayAudits.length}/4`,"realizadas"],
+              [alerts||"0","alertas"],
+              [SHEETS_ON?"✓":"—",SHEETS_ON?"Sheets":"local"],
+            ].map(([v,l])=>(
+              <div key={l} style={{background:"rgba(255,255,255,.08)",borderRadius:12,padding:"10px 10px 8px",textAlign:"center"}}>
+                <p style={{fontSize:18,fontWeight:900,color:"#fff",lineHeight:1}}>{v}</p>
+                <p style={{fontSize:9,color:"rgba(255,255,255,.4)",marginTop:3,textTransform:"uppercase",letterSpacing:"0.08em"}}>{l}</p>
+              </div>
+            ))}
+          </div>
+        </DarkCard>
+
+        {/* Slots */}
+        <p style={{fontSize:9,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginTop:4}}>
+          Horários de auditoria
+        </p>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {SLOTS.map(slot=>{
+            const done=dayAudits.find(a=>a.slotId===slot.id);
+            const sc_=done?scoreColor(done.overallScore):null;
+            const areaCount=areasForSlot(slot).length;
+            return(
+              <Card key={slot.id} pad="0" radius={20}
+                style={{overflow:"hidden",cursor:"pointer"}}
+                onClick={()=>done?onView(done):onStart(slot)}>
+                <div className="tap" style={{display:"flex",alignItems:"center",gap:0}}>
+                  {/* Left color bar */}
+                  <div style={{width:5,alignSelf:"stretch",background:done?(done.overallScore>=4?"#10B981":done.overallScore>=3?"#F59E0B":"#F43F5E"):"#E2E8F0",borderRadius:"20px 0 0 20px",flexShrink:0}}/>
+                  <div style={{display:"flex",alignItems:"center",gap:12,flex:1,padding:"14px 14px 14px 12px"}}>
+                    {/* Score badge */}
+                    <div style={{width:48,height:48,borderRadius:14,flexShrink:0,
+                      background:done?sc_.bg:SHEET,border:`1.5px solid ${done?sc_.br:RING}`,
+                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                      {done?(
+                        <><span style={{fontSize:16,fontWeight:900,color:sc_.tx,lineHeight:1}}>{done.overallScore.toFixed(1)}</span>
+                        <span style={{fontSize:7,color:sc_.tx,opacity:.6}}>/5</span></>
+                      ):(
+                        <span style={{fontSize:12,color:FAINT,fontWeight:700}}>—</span>
+                      )}
+                    </div>
+                    <div style={{flex:1}}>
+                      <p style={{fontSize:17,fontWeight:900,color:INK,letterSpacing:"-0.02em",marginBottom:2}}>{slot.time}</p>
+                      <p style={{fontSize:11,color:MUTED}}>{slot.label}</p>
+                      <p style={{fontSize:9,color:FAINT,marginTop:2}}>
+                        {!slot.classroomsIncluded?"Salas excluídas · ":""}{areaCount} áreas
+                      </p>
+                    </div>
+                    {done?(
+                      <Pill tone={done.overallScore>=4?"good":"bad"}>
+                        {done.overallScore>=4?"✓ OK":"⚠ Ação"}
+                      </Pill>
+                    ):(
+                      <span style={{fontSize:11,color:FAINT,fontWeight:600}}>Iniciar →</span>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Nav buttons */}
+        <div style={{display:"flex",gap:8,marginTop:4}}>
+          <button onClick={onHistory}
+            style={{flex:1,padding:"12px",borderRadius:14,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:12,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>
+            Histórico
+          </button>
+          <button onClick={onDashboard} className="btn-scale"
+            style={{flex:2,padding:"12px",borderRadius:14,border:"none",background:INK,color:"#fff",fontSize:12,fontWeight:900,fontFamily:"inherit",cursor:"pointer",letterSpacing:"0.01em"}}>
+            Dashboard →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tela: Auditoria ──────────────────────────────────────────────────────────
+function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,onNext,onPrev,onDone}){
+  const activeAreas=areasForSlot(slot);
+  const area=activeAreas[areaIdx];
+  const aData=audit.areas[area.id];
+  const scored=aData.items.filter(s=>s!==null).length;
+  const allDone=scored===area.items.length;
+  const isLast=areaIdx===activeAreas.length-1;
+  const prevScores=activeAreas.slice(0,areaIdx).map(a=>{const it=audit.areas[a.id].items.filter(s=>s!==null);return it.length?avg(it):null;});
+
+  return(
+    <div className="au" style={{paddingBottom:96}}>
+      {/* Header */}
+      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.85rem 1rem"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+          <button onClick={onPrev}
+            style={{width:32,height:32,borderRadius:10,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:14,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            ←
+          </button>
+          <div style={{flex:1,minWidth:0}}>
+            <p style={{fontSize:9,color:FAINT,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>
+              {slot.time} {slot.label} · {areaIdx+1} de {activeAreas.length}
+            </p>
+            <p style={{fontSize:15,fontWeight:900,color:INK,letterSpacing:"-0.02em",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{area.label}</p>
+          </div>
+          {/* Room number for classrooms */}
+          {area.isClassroom&&(
+            <div style={{background:INK,borderRadius:10,padding:"5px 10px",flexShrink:0}}>
+              <p style={{fontSize:7,color:"rgba(255,255,255,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Sala nº</p>
+              <input value={aData.roomNumber} onChange={e=>onRoomNumber(area.id,e.target.value)}
+                placeholder="201"
+                style={{width:44,background:"transparent",border:"none",color:"#fff",fontSize:13,fontWeight:900,fontFamily:"inherit",padding:0}}/>
+            </div>
+          )}
+        </div>
+        {/* Step progress */}
+        <div style={{display:"flex",gap:3}}>
+          {activeAreas.map((_,i)=>(
+            <div key={i} style={{flex:1,height:3,borderRadius:2,
+              background:i<areaIdx?"#10B981":i===areaIdx?area.color:"#E2E8F0",
+              transition:"background .2s"}}/>
+          ))}
+        </div>
+        <p style={{fontSize:9,color:FAINT,fontWeight:500,marginTop:5}}>{scored} de {area.items.length} itens pontuados</p>
+      </div>
+
+      {/* Items */}
+      <div style={{padding:"0.75rem 1rem",display:"flex",flexDirection:"column",gap:8}}>
+        {area.items.map(([item,padrao],i)=>{
+          const s=aData.items[i];
+          const state=itemState(s);
+          const c=s!==null?SC[s]:null;
+          return(
+            <Card key={i} pad="12px 14px" radius={18}
+              style={{background:s!==null?c.bg:PAPER,border:`1px solid ${s!==null?c.br:RING}`,transition:"background .18s"}}>
+              <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:10}}>
+                <StateIcon state={state}/>
+                <div style={{flex:1}}>
+                  <p style={{fontSize:13,fontWeight:700,color:s!==null?c.tx:INK,lineHeight:1.35}}>{item}</p>
+                  <p style={{fontSize:10,color:s!==null?c.tx:MUTED,lineHeight:1.4,marginTop:3,opacity:s!==null?.75:1}}>{padrao}</p>
+                </div>
+                {s!==null&&<span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:99,background:`${c.tx}18`,color:c.tx,flexShrink:0}}>{SC[s].lbl}</span>}
+              </div>
+              <ScoreRow value={s} onChange={v=>onScore(area.id,i,v)}/>
+            </Card>
+          );
+        })}
+
+        {/* Notes + photo */}
+        <Card pad="12px 14px" radius={18}>
+          <p style={{fontSize:9,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>Observações</p>
+          <textarea value={aData.notes} onChange={e=>onNotes(area.id,e.target.value)}
+            placeholder="Não conformidades específicas, responsável, detalhes…" rows={2}
+            style={{width:"100%",fontSize:13,lineHeight:1.5,padding:"10px 12px",border:`1.5px solid ${RING}`,borderRadius:12,background:SHEET,color:INK,resize:"none"}}/>
+          <PhotoCapture photo={aData.photo} onPhoto={b64=>onPhoto(area.id,b64)} color={area.color}/>
+        </Card>
+
+        {/* Previous area chips */}
+        {areaIdx>0&&(
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            {activeAreas.slice(0,Math.min(areaIdx,6)).map((a,i)=>{const c=scoreColor(prevScores[i]);return(
+              <span key={a.id} style={{fontSize:9,fontWeight:700,padding:"3px 9px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`}}>
+                {a.short}{audit.areas[a.id]?.roomNumber?` #${audit.areas[a.id].roomNumber}`:""}: {prevScores[i]?prevScores[i].toFixed(1):"—"}
+              </span>
+            );})}
+          </div>
+        )}
+      </div>
+
+      {/* Sticky bottom action bar */}
+      <div style={{position:"sticky",bottom:0,left:0,right:0,background:INK,padding:"12px 1rem",boxShadow:"0 -4px 20px rgba(15,23,42,.25)"}}>
+        <button className="btn-scale" onClick={isLast?onDone:onNext} disabled={!allDone}
+          style={{width:"100%",padding:"15px",borderRadius:14,border:"none",fontFamily:"inherit",
+            fontSize:14,fontWeight:900,letterSpacing:"0.01em",cursor:allDone?"pointer":"default",
+            background:allDone?PAPER:"rgba(255,255,255,.1)",
+            color:allDone?INK:"rgba(255,255,255,.3)",transition:"background .18s"}}>
+          {!allDone
+            ?`Pontue ${area.items.length-scored} item${area.items.length-scored>1?"s":""} restante${area.items.length-scored>1?"s":""}…`
+            :isLast?"Concluir auditoria →":`Próxima: ${activeAreas[areaIdx+1].short} →`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tela: Resumo ─────────────────────────────────────────────────────────────
+function SummaryScreen({auditData,onHome,onNewAudit}){
+  const{slotId,date,areas,overallScore,auditor}=auditData;
+  const slot=SLOTS.find(s=>s.id===slotId)||{time:"",label:""};
+  const activeAreas=areasForSlot(slot);
+  const areaScores=activeAreas.map(a=>{
+    const it=(areas[a.id]?.items||[]).filter(s=>s!==null);
+    return{...a,score:it.length?avg(it):null,notes:areas[a.id]?.notes||"",photo:areas[a.id]?.photo||null,room:areas[a.id]?.roomNumber||""};
+  });
+  const issues=activeAreas.flatMap(a=>(areas[a.id]?.items||[]).map((sc_,i)=>({area:a.short,room:areas[a.id]?.roomNumber||"",areaColor:a.color,item:a.items[i][0],score:sc_}))).filter(x=>x.score!==null&&x.score<4);
+  const passed=overallScore>=4.0;
+  const urgent=overallScore<3.0||issues.some(x=>x.score<2);
+  const[viewPhoto,setViewPhoto]=useState(null);
+
+  return(
+    <div className="au">
+      {viewPhoto&&(
+        <div onClick={()=>setViewPhoto(null)}
+          style={{position:"absolute",top:0,left:0,right:0,minHeight:"100%",background:"rgba(15,23,42,.9)",
+            display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:100,cursor:"pointer",padding:"2rem 1rem"}}>
+          <img src={viewPhoto} style={{width:"100%",maxWidth:420,borderRadius:16,objectFit:"contain"}}/>
+        </div>
+      )}
+
+      {/* Hero */}
+      <DarkCard radius={0} pad="0" style={{background:passed?"#064E3B":"#7F1D1D"}}>
+        <div style={{padding:"1.25rem 1rem 1.1rem"}}>
+          <p style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>
+            SP · {slot.time} {slot.label} · {fmtDate(date)}
+          </p>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div>
+              <p style={{fontSize:11,color:"rgba(255,255,255,.5)",marginBottom:4}}>{passed?"Padrão atingido":"Abaixo do padrão mínimo"}</p>
+              <p style={{fontSize:48,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:1}}>{overallScore.toFixed(1)}</p>
+              <p style={{fontSize:13,color:"rgba(255,255,255,.55)",marginTop:4}}>{passed?"✓ Meta de 4,0 cumprida":"⚠ Ação necessária"}</p>
+            </div>
+            <ScoreRing score={overallScore} size={96}/>
+          </div>
+        </div>
+      </DarkCard>
+
+      <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:10}}>
+        {/* Area scores */}
+        <p style={{fontSize:9,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em"}}>Notas por área</p>
+        <Card pad="0" radius={20} style={{overflow:"hidden"}}>
+          {areaScores.map((a,i)=>{
+            const c=scoreColor(a.score);
+            return(
+              <div key={a.id} style={{display:"flex",alignItems:"center",gap:0,borderBottom:i<areaScores.length-1?`1px solid ${RING}`:"none"}}>
+                <div style={{width:4,alignSelf:"stretch",background:a.color,flexShrink:0}}/>
+                <div style={{display:"flex",alignItems:"center",gap:10,flex:1,padding:"10px 12px"}}>
+                  <span style={{flex:1,fontSize:12,fontWeight:600,color:INK,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {a.short}{a.room?<span style={{color:FAINT,fontWeight:400}}> #{a.room}</span>:null}
+                  </span>
+                  {a.photo&&(
+                    <button onClick={()=>setViewPhoto(a.photo)} style={{background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0}}>
+                      <img src={a.photo} style={{width:28,height:28,borderRadius:7,objectFit:"cover",border:`1px solid ${RING}`}}/>
+                    </button>
+                  )}
+                  <span style={{fontSize:13,fontWeight:900,padding:"2px 12px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,flexShrink:0}}>
+                    {a.score!==null?a.score.toFixed(1):"—"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+
+        {/* Issues */}
+        {issues.length>0&&(
+          <>
+            <p style={{fontSize:9,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>{issues.length} não conformidade{issues.length>1?"s":""}</p>
+            <Card pad="0" radius={18} style={{background:"#FFFBEB",border:"1px solid #FDE68A",overflow:"hidden"}}>
+              {issues.map((x,i)=>{const c=SC[x.score];return(
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 14px",borderBottom:i<issues.length-1?"1px solid #FEF3C7":"none"}}>
+                  <span style={{fontSize:11,fontWeight:900,padding:"3px 8px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,flexShrink:0,marginTop:1}}>{x.score}</span>
+                  <div>
+                    <p style={{fontSize:9,fontWeight:700,color:x.areaColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:2}}>{x.area}{x.room?` #${x.room}`:""}</p>
+                    <p style={{fontSize:12,color:INK2,lineHeight:1.4}}>{x.item}</p>
+                  </div>
+                </div>);})}
+            </Card>
+          </>
+        )}
+
+        {/* Observations */}
+        {areaScores.some(a=>a.notes)&&(
+          <Card pad="1rem" radius={18}>
+            <p style={{fontSize:9,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Observações</p>
+            {areaScores.filter(a=>a.notes).map(a=>(
+              <div key={a.id} style={{marginBottom:6}}>
+                <p style={{fontSize:9,fontWeight:700,color:a.color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>{a.short}{a.room?` #${a.room}`:""}</p>
+                <p style={{fontSize:12,color:MUTED,lineHeight:1.5}}>{a.notes}</p>
+              </div>
+            ))}
+          </Card>
+        )}
+
+        {/* Alert */}
+        {!passed&&(
+          <div style={{background:urgent?"#FEF2F2":"#FFFBEB",border:`1.5px solid ${urgent?"#FECACA":"#FDE68A"}`,borderRadius:16,padding:"13px 15px"}}>
+            <p style={{fontSize:12,fontWeight:900,color:urgent?"#991B1B":"#92400E",marginBottom:4}}>
+              {urgent?"Ação imediata — notificar fornecedor":"Notificar fornecedor"}
+            </p>
+            <p style={{fontSize:12,color:urgent?"#B91C1C":"#B45309",lineHeight:1.55}}>
+              {urgent?"Item com nota 0–1 identificado. Correção imediata. Escalada à Direção.":"Nota geral abaixo de 4,0. Envie o relatório ao líder de equipe. Prazo: mesmo dia."}
+            </p>
+          </div>
+        )}
+
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onHome} style={{flex:1,padding:"13px",borderRadius:14,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:13,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>Início</button>
+          <button onClick={onNewAudit} className="btn-scale" style={{flex:1,padding:"13px",borderRadius:14,border:"none",background:INK,color:"#fff",fontSize:13,fontWeight:900,fontFamily:"inherit",cursor:"pointer"}}>Nova auditoria →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tela: Dashboard ──────────────────────────────────────────────────────────
+function DashboardScreen({onBack,history}){
+  const today=todaySP();const weekStart=startOfWeek(today);
+  const todayA=history.filter(a=>a.date===today);
+  const weekA=history.filter(a=>a.date>=weekStart);
+  const weekAvg=avg(weekA.map(a=>a.overallScore).filter(Boolean));
+  const weekAlerts=weekA.filter(a=>a.overallScore<4).length;
+
+  const trendData=Array.from({length:7},(_,i)=>{
+    const d=new Date();d.setDate(d.getDate()-(6-i));
+    const ds=d.toISOString().split("T")[0];
+    const scores=history.filter(a=>a.date===ds).map(a=>a.overallScore).filter(Boolean);
+    return{day:fmtShort(ds),score:scores.length?parseFloat(avg(scores).toFixed(2)):null,count:scores.length};
+  });
+
+  const belowAreas=AREAS.map(a=>{
+    const scores=weekA.flatMap(aud=>{const it=(aud.areas?.[a.id]?.items||[]).filter(s=>s!==null);return it.length?[avg(it)]:[];});
+    return{...a,score:scores.length?avg(scores):null};
+  }).filter(a=>a.score!==null&&a.score<4);
+
+  const CT=({active,payload,label})=>active&&payload?.length?(
+    <div style={{background:PAPER,border:`1px solid ${RING}`,borderRadius:10,padding:"8px 12px",fontSize:12}}>
+      <p style={{fontWeight:700,color:INK,marginBottom:2}}>{label}</p>
+      <p style={{color:MUTED}}>Nota: {payload[0]?.value?.toFixed(2)||"—"}</p>
+    </div>):null;
+
+  return(
+    <div className="au">
+      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.85rem 1rem",display:"flex",alignItems:"center",gap:12}}>
+        <button onClick={onBack} style={{width:32,height:32,borderRadius:10,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:14,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
+        <div style={{flex:1}}>
+          <p style={{fontSize:15,fontWeight:900,color:INK,letterSpacing:"-0.02em"}}>Dashboard</p>
+          <p style={{fontSize:10,color:FAINT}}>{SHEETS_ON?"Sincronizado com Google Sheets":"Dados locais neste dispositivo"}</p>
+        </div>
+      </div>
+
+      <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:10}}>
+        {/* KPI grid */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+          {[
+            ["Hoje",`${todayA.length}/4`,"auditorias",false],
+            ["Semana",weekAvg?weekAvg.toFixed(1):"—","média geral",false],
+            ["Alertas",weekAlerts||"0","abaixo de 4,0",weekAlerts>0],
+          ].map(([title,val,sub,isAlert])=>(
+            <Card key={title} pad="12px 10px" style={{border:`1px solid ${isAlert?"#FDE68A":RING}`,background:isAlert?"#FFFBEB":PAPER}}>
+              <p style={{fontSize:9,color:FAINT,marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em"}}>{title}</p>
+              <p style={{fontSize:22,fontWeight:900,color:isAlert?"#D97706":INK,letterSpacing:"-0.04em",lineHeight:1}}>{val}</p>
+              <p style={{fontSize:9,color:FAINT,marginTop:5}}>{sub}</p>
+            </Card>
+          ))}
+        </div>
+
+        {/* Trend chart */}
+        {trendData.some(d=>d.count>0)&&(
+          <DarkCard>
+            <p style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:4}}>Tendência</p>
+            <p style={{fontSize:16,fontWeight:900,color:"#fff",letterSpacing:"-0.03em",marginBottom:14}}>Nota média — 7 dias</p>
+            <ResponsiveContainer width="100%" height={120}>
+              <LineChart data={trendData} margin={{top:4,right:4,left:-24,bottom:0}}>
+                <XAxis dataKey="day" tick={{fontSize:9,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
+                <YAxis domain={[2,5]} tick={{fontSize:9,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
+                <Tooltip content={<CT/>}/>
+                <ReferenceLine y={4} stroke="rgba(255,255,255,.3)" strokeDasharray="3 3" strokeWidth={1.5}/>
+                <Line type="monotone" dataKey="score" stroke="#10B981" strokeWidth={2.5} dot={{r:3,fill:"#10B981"}} connectNulls/>
+              </LineChart>
+            </ResponsiveContainer>
+            <p style={{fontSize:9,color:"rgba(255,255,255,.35)",marginTop:6}}>Linha = padrão mínimo 4,0</p>
+          </DarkCard>
+        )}
+
+        {/* Below standard areas */}
+        {belowAreas.length>0&&(
+          <>
+            <p style={{fontSize:9,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>Áreas abaixo de 4,0 esta semana</p>
+            <Card pad="0" radius={20} style={{overflow:"hidden"}}>
+              {belowAreas.map((a,i)=>{const c=scoreColor(a.score);return(
+                <div key={a.id} style={{display:"flex",alignItems:"center",gap:0,borderBottom:i<belowAreas.length-1?`1px solid ${RING}`:"none"}}>
+                  <div style={{width:4,alignSelf:"stretch",background:a.color,flexShrink:0}}/>
+                  <div style={{display:"flex",alignItems:"center",gap:10,flex:1,padding:"10px 12px"}}>
+                    <span style={{flex:1,fontSize:12,fontWeight:600,color:INK}}>{a.short}</span>
+                    <span style={{fontSize:13,fontWeight:900,padding:"2px 12px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`}}>{a.score.toFixed(1)}</span>
+                  </div>
+                </div>);})}
+            </Card>
+          </>
+        )}
+
+        {history.length===0&&(
+          <div style={{textAlign:"center",padding:"2.5rem 1rem"}}>
+            <p style={{fontSize:14,fontWeight:700,color:INK,marginBottom:6}}>Nenhuma auditoria ainda.</p>
+            <p style={{fontSize:12,color:MUTED}}>Faça a primeira auditoria para ver os dados aqui.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tela: Histórico ──────────────────────────────────────────────────────────
+function HistoryScreen({history,onBack,onView}){
+  const sorted=[...history].sort((a,b)=>b.timestamp-a.timestamp).slice(0,80);
+  const grouped=sorted.reduce((acc,a)=>{if(!acc[a.date])acc[a.date]=[];acc[a.date].push(a);return acc;},{});
+  return(
+    <div className="au">
+      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.85rem 1rem",display:"flex",alignItems:"center",gap:12}}>
+        <button onClick={onBack} style={{width:32,height:32,borderRadius:10,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:14,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
+        <p style={{fontSize:15,fontWeight:900,color:INK,letterSpacing:"-0.02em",flex:1}}>Histórico</p>
+        <span style={{fontSize:10,color:FAINT}}>{sorted.length} auditorias</span>
+      </div>
+      {sorted.length===0
+        ?<div style={{padding:"3rem",textAlign:"center",color:FAINT,fontSize:13}}>Nenhuma auditoria registrada.</div>
+        :(
+          <div style={{padding:"0.75rem 1rem"}}>
+            {Object.entries(grouped).map(([date,audits])=>(
+              <div key={date} style={{marginBottom:"1.25rem"}}>
+                <p style={{fontSize:10,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>{fmtDate(date)}</p>
+                <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                  {audits.map(a=>{
+                    const sc_=scoreColor(a.overallScore);
+                    const slot=SLOTS.find(s=>s.id===a.slotId);
+                    return(
+                      <Card key={a.id} pad="0" radius={18} style={{overflow:"hidden",cursor:"pointer"}} onClick={()=>onView(a)}>
+                        <div className="tap" style={{display:"flex",alignItems:"center",gap:0}}>
+                          <div style={{width:4,alignSelf:"stretch",background:a.overallScore>=4?"#10B981":a.overallScore>=3?"#F59E0B":"#F43F5E",borderRadius:"18px 0 0 18px",flexShrink:0}}/>
+                          <div style={{display:"flex",alignItems:"center",gap:12,flex:1,padding:"12px 14px 12px 12px"}}>
+                            <div style={{width:44,height:44,borderRadius:12,background:sc_.bg,border:`1.5px solid ${sc_.br}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              <span style={{fontSize:15,fontWeight:900,color:sc_.tx,lineHeight:1}}>{a.overallScore.toFixed(1)}</span>
+                              <span style={{fontSize:7,color:sc_.tx,opacity:.6}}>/5</span>
+                            </div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <p style={{fontSize:13,fontWeight:700,color:INK,marginBottom:1}}>{slot?.time} · {slot?.label}</p>
+                              <p style={{fontSize:11,color:MUTED}}>{a.auditor}</p>
+                            </div>
+                            <Pill tone={a.overallScore>=4?"good":"bad"}>{a.overallScore>=4?"OK":"⚠"}</Pill>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+    </div>
+  );
+}
+
+// ─── App root ─────────────────────────────────────────────────────────────────
+export default function EspacosApp(){
+  const[screen,   setScreen] =useState("name");
+  const[auditor,  setAuditor]=useState(()=>localStorage.getItem("ec_auditor")||"");
+  const[date]                =useState(todaySP);
+  const[slot,     setSlot]   =useState(null);
+  const[areaIdx,  setAreaIdx]=useState(0);
+  const[audit,    setAudit]  =useState(null);
+  const[history,  setHistory]=useState(()=>lhLoad());
+  const[viewData, setViewData]=useState(null);
+  const[pending,  setPending]=useState(()=>qLoad().length);
+
+  useEffect(()=>{
+    if(auditor)setScreen("home");
+    if(SHEETS_ON&&qLoad().length){syncQueue().then(n=>{if(n>0)setPending(qLoad().length);});}
+  },[]);
+
+  const completeAudit=async()=>{
+    const active=areasForSlot(slot);
+    const aScores=active.map(a=>{const it=audit.areas[a.id].items.filter(s=>s!==null);return it.length?avg(it):null;}).filter(s=>s!==null);
+    const overallScore=avg(aScores)||0;
+    const entry={id:Date.now().toString(),timestamp:Date.now(),campus:"SP",date,slotId:slot.id,slotLabel:slot.label,overallScore,areas:audit.areas,auditor};
+    const updated=[...history.filter(a=>!(a.date===date&&a.slotId===slot.id)),entry];
+    lhSave(updated);setHistory(updated);
+    saveToSheets(entry).catch(()=>{qAdd(entry);setPending(p=>p+1);});
+    setViewData(entry);setScreen("summary");
+  };
+
+  const hScore=(aId,i,v)=>setAudit(p=>({...p,areas:{...p.areas,[aId]:{...p.areas[aId],items:p.areas[aId].items.map((s,j)=>j===i?v:s)}}}));
+  const hNotes=(aId,n)=>setAudit(p=>({...p,areas:{...p.areas,[aId]:{...p.areas[aId],notes:n}}}));
+  const hPhoto=(aId,b)=>setAudit(p=>({...p,areas:{...p.areas,[aId]:{...p.areas[aId],photo:b}}}));
+  const hRoom =(aId,n)=>setAudit(p=>({...p,areas:{...p.areas,[aId]:{...p.areas[aId],roomNumber:n}}}));
+
+  return(
+    <>
+      <style>{CSS}</style>
+      <div className="app">
+        {screen==="name"    &&<NameScreen onSet={n=>{localStorage.setItem("ec_auditor",n);setAuditor(n);setScreen("home");}}/>}
+        {screen==="home"    &&<HomeScreen date={date} history={history} auditor={auditor} pending={pending}
+          onStart={s=>{setSlot(s);setAudit(emptyAudit());setAreaIdx(0);setScreen("audit");}}
+          onView={a=>{setViewData(a);setScreen("summary");}}
+          onDashboard={()=>setScreen("dashboard")} onHistory={()=>setScreen("history")}/>}
+        {screen==="audit"   &&audit&&slot&&<AuditScreen slot={slot} areaIdx={areaIdx} audit={audit}
+          onScore={hScore} onNotes={hNotes} onPhoto={hPhoto} onRoomNumber={hRoom}
+          onNext={()=>setAreaIdx(i=>i+1)}
+          onPrev={()=>areaIdx===0?setScreen("home"):setAreaIdx(i=>i-1)}
+          onDone={completeAudit}/>}
+        {screen==="summary" &&viewData&&<SummaryScreen auditData={viewData} onHome={()=>setScreen("home")} onNewAudit={()=>setScreen("home")}/>}
+        {screen==="dashboard"&&<DashboardScreen onBack={()=>setScreen("home")} history={history}/>}
+        {screen==="history" &&<HistoryScreen history={history} onBack={()=>setScreen("home")} onView={a=>{setViewData(a);setScreen("summary");}}/>}
+      </div>
+    </>
+  );
+}
