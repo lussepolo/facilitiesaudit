@@ -415,7 +415,7 @@ const SLOTS=[
   {id:"1630",time:"16:30",label:"Encerramento",       classroomsIncluded:true },
 ];
 
-const areasForSlot=slot=>AREAS.filter(a=>slot.classroomsIncluded||!a.isClassroom);
+const areasForSlot=slot=>AREAS.filter(a=>(slot.time==="11:30"||slot.time==="14:30")?a.color===C_BATH:slot.classroomsIncluded||!a.isClassroom);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const todaySP=()=>{
