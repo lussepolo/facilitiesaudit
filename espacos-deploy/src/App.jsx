@@ -7,15 +7,13 @@ const SHEETS_ON  = SHEETS_URL.startsWith("https://script.google.com");
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
-  @import url('https://unpkg.com/@fontsource/dm-sans/400.css');
-  @import url('https://unpkg.com/@fontsource/dm-sans/500.css');
-  @import url('https://unpkg.com/@fontsource/dm-sans/600.css');
   *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
   .app {
-    font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
     background:#F5F7FA;
     min-height:100vh;
+    min-height:100dvh;
     color:#0F172A;
     max-width:430px;
     margin:0 auto;
@@ -33,7 +31,7 @@ const CSS = `
   .score-btn {
     width:100%; min-height:52px; border-radius:999px; border:1.5px solid;
     font-size:16px; font-weight:900;
-    font-family:'DM Sans',system-ui,sans-serif;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     cursor:pointer; display:flex; align-items:center; justify-content:center;
     padding:0 12px;
     line-height:1.18;
@@ -43,7 +41,7 @@ const CSS = `
     flex-shrink:0;
   }
   .score-btn:active { transform:scale(.84); }
-  textarea, input, button { font-family:'DM Sans',system-ui,sans-serif; outline:none; }
+  textarea, input, button { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif; outline:none; }
   textarea:focus, input:focus {
     border-color:#F5C200 !important;
     box-shadow:0 0 0 3px rgba(245,194,0,.18) !important;
@@ -496,7 +494,7 @@ function Pill({children, tone="neutral"}){
     yellow: {bg:YELLOW,color:INK,border:YELLOW},
   }[tone]||{bg:SHEET,color:MUTED,border:RING};
   return(
-    <span style={{display:"inline-flex",alignItems:"center",padding:"5px 12px",borderRadius:99,border:`1px solid ${t.border}`,background:t.bg,color:t.color,fontSize:12,fontWeight:900,letterSpacing:"0.01em",lineHeight:1.2,boxShadow:"0 1px 2px rgba(15,23,42,.05)"}}>
+    <span style={{display:"inline-flex",alignItems:"center",padding:"5px 12px",borderRadius:99,border:`1px solid ${t.border}`,background:t.bg,color:t.color,fontSize:14,fontWeight:900,letterSpacing:"0.01em",lineHeight:1.2,boxShadow:"0 1px 2px rgba(15,23,42,.05)"}}>
       {children}
     </span>
   );
@@ -517,7 +515,7 @@ function ScoreRing({score,size=100}){
       </svg>
       <div style={{position:"absolute",textAlign:"center",color:"#fff"}}>
         <div style={{fontSize:size>90?28:20,fontWeight:900,letterSpacing:"-0.04em",lineHeight:1}}>{score.toFixed(1)}</div>
-        <div style={{fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",opacity:.55,marginTop:2}}>nota</div>
+        <div style={{fontSize:14,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",opacity:.55,marginTop:2}}>nota</div>
       </div>
     </div>
   );
@@ -574,9 +572,9 @@ function PhotoCapture({photo,onPhoto,color}){
           <img src={photo} onClick={()=>ref.current.click()} alt="foto"
             style={{width:56,height:56,borderRadius:12,objectFit:"cover",border:`2px solid ${color}`,cursor:"pointer"}}/>
           <div>
-            <p style={{fontSize:12,fontWeight:700,color,marginBottom:3}}>Foto anexada</p>
+            <p style={{fontSize:14,fontWeight:700,color,marginBottom:3}}>Foto anexada</p>
             <button onClick={()=>ref.current.click()}
-              style={{fontSize:12,color:MUTED,background:SHEET,border:`1px solid ${RING}`,borderRadius:8,padding:"6px 12px",minHeight:34,fontFamily:"inherit",cursor:"pointer"}}>
+              style={{fontSize:14,color:MUTED,background:SHEET,border:`1px solid ${RING}`,borderRadius:10,padding:"8px 14px",minHeight:44,fontFamily:"inherit",cursor:"pointer"}}>
               Trocar
             </button>
           </div>
@@ -585,7 +583,7 @@ function PhotoCapture({photo,onPhoto,color}){
         <button onClick={()=>ref.current.click()}
           style={{display:"flex",alignItems:"center",gap:8,padding:"9px 16px",borderRadius:12,
             border:`1.5px dashed ${RING}`,background:"transparent",color:MUTED,
-            fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer",minHeight:44}}>
+            fontSize:14,fontWeight:600,fontFamily:"inherit",cursor:"pointer",minHeight:44}}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
             <circle cx="12" cy="13" r="4"/>
@@ -616,7 +614,7 @@ function MetricCard({label,value,tone="neutral"}){
   }[tone]||{bg:PAPER,tx:INK,border:RING};
   return(
     <div style={{background:palette.bg,border:`1px solid ${palette.border}`,borderRadius:20,padding:"13px 12px",minHeight:86}}>
-      <p style={{fontSize:12,fontWeight:800,color:MUTED,lineHeight:1.25,marginBottom:8}}>{label}</p>
+      <p style={{fontSize:14,fontWeight:800,color:MUTED,lineHeight:1.25,marginBottom:8}}>{label}</p>
       <p style={{fontSize:26,fontWeight:900,color:palette.tx,letterSpacing:"-0.05em",lineHeight:1}}>{value}</p>
     </div>
   );
@@ -631,12 +629,12 @@ function BottomNav({active,onAudit,onAreas,onIndicadores}){
     ["Ajustes",null],
   ];
   return(
-    <div style={{position:"sticky",bottom:0,zIndex:30,background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderTop:`1px solid ${GLASS_BORDER}`,boxShadow:"0 -18px 42px rgba(17,24,39,.12)",padding:"9px 8px 11px",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4}}>
+    <div style={{position:"sticky",bottom:0,zIndex:30,background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderTop:`1px solid ${GLASS_BORDER}`,boxShadow:"0 -18px 42px rgba(17,24,39,.12)",padding:"9px 8px calc(11px + env(safe-area-inset-bottom))",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4}}>
       {items.map(([label,handler])=>{
         const selected=active===label;
         return(
           <button key={label} onClick={handler||undefined} disabled={!handler}
-            style={{minHeight:48,border:selected?`1px solid ${GLASS_BORDER}`:"1px solid transparent",borderRadius:16,background:selected?GLASS_BLUE:"transparent",color:selected?BLUE:handler?MUTED:FAINT,fontSize:11.5,fontWeight:selected?900:800,cursor:handler?"pointer":"default",padding:"6px 4px",lineHeight:1.15,boxShadow:selected?"0 8px 18px rgba(31,78,121,.10)":"none"}}>
+            style={{minHeight:48,border:selected?`1px solid ${GLASS_BORDER}`:"1px solid transparent",borderRadius:16,background:selected?GLASS_BLUE:"transparent",color:selected?BLUE:handler?MUTED:FAINT,fontSize:14,fontWeight:selected?900:800,cursor:handler?"pointer":"default",padding:"6px 4px",lineHeight:1.15,boxShadow:selected?"0 8px 18px rgba(31,78,121,.10)":"none"}}>
             {label}
           </button>
         );
@@ -664,13 +662,13 @@ function NameScreen({onSet}){
           <span style={{fontSize:16,fontWeight:900,color:INK,letterSpacing:"-0.03em"}}>EC</span>
         </div>
         <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 15px",borderRadius:99,background:INK,marginBottom:16,boxShadow:"0 10px 24px rgba(15,23,42,.16)"}}>
-          <span style={{fontSize:11,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:"0.15em"}}>Auditoria de Espaços</span>
+          <span style={{fontSize:14,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:"0.15em"}}>Auditoria de Espaços</span>
         </div>
         <h1 style={{fontSize:36,fontWeight:900,color:INK,letterSpacing:"-0.05em",lineHeight:1.05,marginBottom:10}}>Escola Concept<br/>São Paulo</h1>
         <p style={{fontSize:15,color:MUTED,lineHeight:1.55}}>Qualidade operacional · Ciclo 2026</p>
       </div>
       <div style={{width:"100%",maxWidth:340,background:PAPER,border:`1px solid ${RING}`,borderRadius:26,padding:"1rem",boxShadow:SHADOW}}>
-        <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Seu nome</p>
+        <p style={{fontSize:14,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Seu nome</p>
         <input value={name} onChange={e=>setName(e.target.value)}
           onKeyDown={e=>e.key==="Enter"&&name.trim()&&onSet(name.trim())}
           placeholder="ex: Ana Lima"
@@ -678,13 +676,13 @@ function NameScreen({onSet}){
         <button onClick={()=>name.trim()&&onSet(name.trim())} className="btn-scale"
           disabled={!name.trim()}
           style={{width:"100%",padding:"15px",borderRadius:14,border:"none",fontFamily:"inherit",
-            fontSize:15,fontWeight:900,letterSpacing:"0.01em",minHeight:50,boxShadow:name.trim()?"0 12px 24px rgba(15,23,42,.18)":"none",
+            fontSize:16,fontWeight:900,letterSpacing:"0.01em",minHeight:50,boxShadow:name.trim()?"0 12px 24px rgba(15,23,42,.18)":"none",
             background:name.trim()?INK:"#E2E8F0",
             color:name.trim()?"#fff":FAINT,cursor:name.trim()?"pointer":"default"}}>
           Entrar →
         </button>
         {!SHEETS_ON&&(
-          <p style={{marginTop:12,fontSize:12,color:FAINT,textAlign:"center",lineHeight:1.65}}>
+          <p style={{marginTop:12,fontSize:14,color:FAINT,textAlign:"center",lineHeight:1.65}}>
             Dados salvos neste dispositivo.<br/>Configure VITE_SHEETS_URL para persistir na planilha.
           </p>
         )}
@@ -718,16 +716,16 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
       <div style={{padding:"1.1rem 1rem 0",display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative",zIndex:2}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:44,height:44,borderRadius:16,background:SOFT_BLUE,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 8px 18px rgba(31,78,121,.12)",border:`1px solid #C9DCEB`}}>
-            <span style={{fontSize:13,fontWeight:900,color:BLUE}}>EC</span>
+            <span style={{fontSize:14,fontWeight:900,color:BLUE}}>EC</span>
           </div>
           <div>
-            <p style={{fontSize:12,fontWeight:800,color:BLUE,lineHeight:1.2}}>Inteligência de Facilities</p>
-            <p style={{fontSize:12,fontWeight:600,color:MUTED,lineHeight:1.35,marginTop:2}}>Campus São Paulo · {fmtDate(date)}</p>
+            <p style={{fontSize:14,fontWeight:800,color:BLUE,lineHeight:1.2}}>Inteligência de Facilities</p>
+            <p style={{fontSize:14,fontWeight:600,color:MUTED,lineHeight:1.35,marginTop:2}}>Campus São Paulo · {fmtDate(date)}</p>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}}>
           {pending>0&&<Pill tone="warn">{pending} pendente{pending>1?"s":""}</Pill>}
-          <span style={{fontSize:12,fontWeight:800,color:INK,textAlign:"right"}}>{auditor}</span>
+          <span style={{fontSize:14,fontWeight:800,color:INK,textAlign:"right"}}>{auditor}</span>
         </div>
       </div>
 
@@ -736,13 +734,13 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
         <DarkCard pad="1.35rem" radius={30}>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,marginBottom:"1.1rem"}}>
             <div>
-              <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.55)",lineHeight:1.25,marginBottom:8}}>Auditoria de Facilities · Campus São Paulo</p>
+              <p style={{fontSize:14,fontWeight:800,color:"rgba(255,255,255,.55)",lineHeight:1.25,marginBottom:8}}>Auditoria de Facilities · Campus São Paulo</p>
               <h2 style={{fontSize:28,fontWeight:900,color:"#fff",letterSpacing:"-0.05em",lineHeight:1.02,marginBottom:8}}>Rodada de hoje</h2>
               <p style={{fontSize:15,color:"rgba(255,255,255,.68)",lineHeight:1.45}}>Próxima janela: {nextSlot.time} · {nextSlot.label}</p>
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
               <p style={{fontSize:38,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:.95}}>{completionPct}%</p>
-              <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.55)",marginTop:5}}>concluída</p>
+              <p style={{fontSize:14,fontWeight:800,color:"rgba(255,255,255,.55)",marginTop:5}}>concluída</p>
             </div>
           </div>
           <div style={{height:9,borderRadius:99,background:"rgba(255,255,255,.12)",overflow:"hidden",marginBottom:14}}>
@@ -757,7 +755,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
             ].map(([v,l])=>(
               <div key={l} style={{background:"rgba(255,255,255,.09)",border:"1px solid rgba(255,255,255,.08)",borderRadius:18,padding:"13px 11px 11px"}}>
                 <p style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:"-0.04em",lineHeight:1}}>{v}</p>
-                <p style={{fontSize:12,color:"rgba(255,255,255,.58)",marginTop:6,lineHeight:1.25}}>{l}</p>
+                <p style={{fontSize:14,color:"rgba(255,255,255,.58)",marginTop:6,lineHeight:1.25}}>{l}</p>
               </div>
             ))}
           </div>
@@ -776,7 +774,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
           <div>
             <p style={{fontSize:20,fontWeight:900,color:INK,letterSpacing:"-0.04em",lineHeight:1.15}}>Áreas e rodadas</p>
-            <p style={{fontSize:13,color:MUTED,lineHeight:1.4,marginTop:2}}>Escolha uma rodada para auditar ou revisar.</p>
+            <p style={{fontSize:14,color:MUTED,lineHeight:1.4,marginTop:2}}>Escolha uma rodada para auditar ou revisar.</p>
           </div>
           <Pill tone={SHEETS_ON?"good":"neutral"}>{SHEETS_ON?"Planilha ativa":"Modo local"}</Pill>
         </div>
@@ -800,9 +798,9 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                       display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",boxShadow:done?"0 6px 16px rgba(15,23,42,.06)":"none"}}>
                       {done?(
                         <><span style={{fontSize:16,fontWeight:900,color:sc_.tx,lineHeight:1}}>{done.overallScore.toFixed(1)}</span>
-                        <span style={{fontSize:10.5,color:sc_.tx,opacity:.6}}>/5</span></>
+                        <span style={{fontSize:14,color:sc_.tx,opacity:.6}}>/5</span></>
                       ):(
-                        <span style={{fontSize:12,color:FAINT,fontWeight:700}}>—</span>
+                        <span style={{fontSize:14,color:FAINT,fontWeight:700}}>—</span>
                       )}
                     </div>
                     <div style={{flex:1}}>
@@ -811,7 +809,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                         <Pill tone={done?done.overallScore>=4?"good":"warn":"neutral"}>{status}</Pill>
                       </div>
                       <p style={{fontSize:15,color:INK2,lineHeight:1.35,fontWeight:800}}>{slot.label}</p>
-                      <p style={{fontSize:13,color:MUTED,marginTop:4,lineHeight:1.35}}>
+                      <p style={{fontSize:14,color:MUTED,marginTop:4,lineHeight:1.35}}>
                         {!slot.classroomsIncluded?"Salas excluídas · ":""}{areaCount} áreas
                       </p>
                     </div>
@@ -820,7 +818,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                         {done.overallScore>=4?"Adequado":"Requer atenção"}
                       </Pill>
                     ):(
-                      <button style={{border:"none",background:BLUE,color:"#fff",borderRadius:16,padding:"12px 14px",fontSize:13,fontWeight:900,cursor:"pointer",boxShadow:"0 10px 18px rgba(31,78,121,.18)"}}>Auditar</button>
+                      <button style={{border:"none",background:BLUE,color:"#fff",borderRadius:16,padding:"12px 14px",fontSize:16,fontWeight:900,cursor:"pointer",boxShadow:"0 10px 18px rgba(31,78,121,.18)",minHeight:44}}>Auditar</button>
                     )}
                   </div>
                 </div>
@@ -832,7 +830,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
         {/* Nav buttons */}
         <div style={{display:"flex",gap:8,marginTop:4}}>
           <button onClick={onHistory}
-            style={{flex:1,padding:"14px 12px",minHeight:48,borderRadius:16,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:13,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>
+            style={{flex:1,padding:"14px 12px",minHeight:48,borderRadius:16,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:14,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>
             Áreas
           </button>
           <button onClick={onDashboard} className="btn-scale"
@@ -865,11 +863,11 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
       <div style={{background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderBottom:`1px solid ${GLASS_BORDER}`,padding:"0.95rem 1rem 0.85rem",boxShadow:"0 12px 30px rgba(17,24,39,.08)"}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
           <button onClick={onPrev}
-            style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>
+            style={{width:44,height:44,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>
             ←
           </button>
           <div style={{flex:1,minWidth:0}}>
-            <p style={{fontSize:11,color:FAINT,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3,lineHeight:1.25}}>
+            <p style={{fontSize:14,color:FAINT,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3,lineHeight:1.25}}>
               {slot.time} {slot.label} · {areaIdx+1} de {activeAreas.length}
             </p>
             <p style={{fontSize:17,fontWeight:900,color:INK,letterSpacing:"-0.03em",lineHeight:1.22}}>{area.label}</p>
@@ -877,7 +875,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
           {/* Room number for classrooms */}
           {area.isClassroom&&(
             <div style={{background:INK,borderRadius:14,padding:"7px 11px",flexShrink:0,boxShadow:"0 8px 18px rgba(15,23,42,.18)"}}>
-              <p style={{fontSize:10.5,color:"rgba(255,255,255,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Sala nº</p>
+              <p style={{fontSize:14,color:"rgba(255,255,255,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Sala nº</p>
               <input value={aData.roomNumber} onChange={e=>onRoomNumber(area.id,e.target.value)}
                 placeholder="201"
                 style={{width:48,background:"transparent",border:"none",color:"#fff",fontSize:14,fontWeight:900,fontFamily:"inherit",padding:0}}/>
@@ -887,7 +885,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
         {/* Step progress */}
         <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"center",marginBottom:12}}>
           <div style={{background:SOFT_BLUE,border:"1px solid #C9DCEB",borderRadius:20,padding:"12px 13px"}}>
-            <p style={{fontSize:12,fontWeight:800,color:BLUE,lineHeight:1.2,marginBottom:4}}>Área em auditoria</p>
+            <p style={{fontSize:14,fontWeight:800,color:BLUE,lineHeight:1.2,marginBottom:4}}>Área em auditoria</p>
             <p style={{fontSize:16,fontWeight:900,color:INK,letterSpacing:"-0.02em",lineHeight:1.2}}>{area.short}</p>
           </div>
           <div style={{textAlign:"right"}}>
@@ -902,7 +900,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
               transition:"background .2s"}}/>
           ))}
         </div>
-        <p style={{fontSize:13,color:MUTED,fontWeight:700,marginTop:8,lineHeight:1.35}}>{scored} de {area.items.length} itens pontuados</p>
+        <p style={{fontSize:14,color:MUTED,fontWeight:700,marginTop:8,lineHeight:1.35}}>{scored} de {area.items.length} itens pontuados</p>
       </div>
 
       {/* Items */}
@@ -920,7 +918,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
                   <p style={{fontSize:16,fontWeight:900,color:s!==null?c.tx:INK,lineHeight:1.32,letterSpacing:"-0.02em"}}>{item}</p>
                   <p style={{fontSize:14,color:s!==null?c.tx:MUTED,lineHeight:1.55,marginTop:6,opacity:s!==null?.78:1}}>{padrao}</p>
                 </div>
-                {s!==null&&<span style={{fontSize:11,fontWeight:700,padding:"3px 9px",borderRadius:99,background:`${c.tx}18`,color:c.tx,flexShrink:0,lineHeight:1.2}}>{SC[s].lbl}</span>}
+                {s!==null&&<span style={{fontSize:14,fontWeight:700,padding:"3px 9px",borderRadius:99,background:`${c.tx}18`,color:c.tx,flexShrink:0,lineHeight:1.2}}>{SC[s].lbl}</span>}
               </div>
               <ScoreRow value={s} onChange={v=>onScore(area.id,i,v)}/>
             </Card>
@@ -929,7 +927,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
 
         {/* Notes + photo */}
         <Card pad="15px" radius={24}>
-          <p style={{fontSize:13,fontWeight:800,color:BLUE,marginBottom:8}}>Observações e evidências</p>
+          <p style={{fontSize:14,fontWeight:800,color:BLUE,marginBottom:8}}>Observações e evidências</p>
           <textarea value={aData.notes} onChange={e=>onNotes(area.id,e.target.value)}
             placeholder="Não conformidades específicas, responsável, detalhes…" rows={2}
             style={{width:"100%",fontSize:14,lineHeight:1.6,padding:"12px 13px",border:`1.5px solid ${RING}`,borderRadius:16,background:SHEET,color:INK,resize:"none"}}/>
@@ -940,7 +938,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
         {areaIdx>0&&(
           <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
             {activeAreas.slice(0,Math.min(areaIdx,6)).map((a,i)=>{const c=scoreColor(prevScores[i]);return(
-              <span key={a.id} style={{fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,lineHeight:1.25}}>
+              <span key={a.id} style={{fontSize:14,fontWeight:700,padding:"4px 10px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,lineHeight:1.25}}>
                 {a.short}{audit.areas[a.id]?.roomNumber?` #${audit.areas[a.id].roomNumber}`:""}: {prevScores[i]?prevScores[i].toFixed(1):"—"}
               </span>
             );})}
@@ -949,10 +947,10 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
       </div>
 
       {/* Sticky bottom action bar */}
-      <div style={{position:"sticky",bottom:0,left:0,right:0,background:"rgba(15,23,42,.96)",padding:"13px 1rem",boxShadow:"0 -12px 32px rgba(15,23,42,.25)",borderTop:"1px solid rgba(255,255,255,.08)"}}>
+      <div style={{position:"sticky",bottom:0,left:0,right:0,background:"rgba(15,23,42,.96)",padding:"13px 1rem calc(13px + env(safe-area-inset-bottom))",boxShadow:"0 -12px 32px rgba(15,23,42,.25)",borderTop:"1px solid rgba(255,255,255,.08)"}}>
         <button className="btn-scale" onClick={isLast?onDone:onNext} disabled={!allDone}
           style={{width:"100%",padding:"15px",borderRadius:18,border:"none",fontFamily:"inherit",
-            fontSize:15,fontWeight:900,letterSpacing:"0.01em",cursor:allDone?"pointer":"default",minHeight:48,
+            fontSize:16,fontWeight:900,letterSpacing:"0.01em",cursor:allDone?"pointer":"default",minHeight:48,
             background:allDone?YELLOW:"rgba(255,255,255,.1)",
             color:allDone?INK:"rgba(255,255,255,.35)",transition:"background .18s",boxShadow:allDone?"0 12px 24px rgba(245,194,0,.22)":"none"}}>
           {!allDone
@@ -991,12 +989,12 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
       {/* Hero */}
       <DarkCard radius={0} pad="0" style={{background:passed?"#064E3B":"#7F1D1D",boxShadow:"0 18px 42px rgba(15,23,42,.22)"}}>
         <div style={{padding:"1.45rem 1.1rem 1.3rem"}}>
-          <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,lineHeight:1.3}}>
+          <p style={{fontSize:14,fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,lineHeight:1.3}}>
             SP · {slot.time} {slot.label} · {fmtDate(date)}
           </p>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
-              <p style={{fontSize:12.5,color:"rgba(255,255,255,.5)",marginBottom:4,lineHeight:1.35}}>{passed?"Padrão atingido":"Abaixo do padrão mínimo"}</p>
+              <p style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:4,lineHeight:1.35}}>{passed?"Padrão atingido":"Abaixo do padrão mínimo"}</p>
               <p style={{fontSize:54,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:.94}}>{overallScore.toFixed(1)}</p>
               <p style={{fontSize:14,color:"rgba(255,255,255,.55)",marginTop:5,lineHeight:1.35}}>{passed?"✓ Meta de 4,0 cumprida":"⚠ Ação necessária"}</p>
             </div>
@@ -1004,11 +1002,11 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
           </div>
           <div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
             <div style={{background:"rgba(255,255,255,.16)",backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:"1px solid rgba(255,255,255,.20)",borderRadius:22,padding:"12px",boxShadow:"0 12px 26px rgba(17,24,39,.10)"}}>
-              <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.58)",lineHeight:1.25}}>Registro</p>
+              <p style={{fontSize:14,fontWeight:800,color:"rgba(255,255,255,.58)",lineHeight:1.25}}>Registro</p>
               <p style={{fontSize:16,fontWeight:900,color:"#fff",lineHeight:1.25,marginTop:4}}>Auditoria concluída</p>
             </div>
             <div style={{background:"rgba(255,255,255,.16)",backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:"1px solid rgba(255,255,255,.20)",borderRadius:22,padding:"12px",boxShadow:"0 12px 26px rgba(17,24,39,.10)"}}>
-              <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.58)",lineHeight:1.25}}>Persistência</p>
+              <p style={{fontSize:14,fontWeight:800,color:"rgba(255,255,255,.58)",lineHeight:1.25}}>Persistência</p>
               <p style={{fontSize:16,fontWeight:900,color:"#fff",lineHeight:1.25,marginTop:4}}>{SHEETS_ON?"Planilha ativa":"Modo local"}</p>
             </div>
           </div>
@@ -1017,7 +1015,7 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
 
       <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:12}}>
         {/* Area scores */}
-        <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em"}}>Notas por área</p>
+        <p style={{fontSize:14,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em"}}>Notas por área</p>
         <Card pad="0" radius={24} style={{overflow:"hidden"}}>
           {areaScores.map((a,i)=>{
             const c=scoreColor(a.score);
@@ -1025,11 +1023,11 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
               <div key={a.id} style={{display:"flex",alignItems:"center",gap:0,borderBottom:i<areaScores.length-1?`1px solid ${RING}`:"none"}}>
                 <div style={{width:5,alignSelf:"stretch",background:a.color,flexShrink:0}}/>
                 <div style={{display:"flex",alignItems:"center",gap:11,flex:1,padding:"12px 13px"}}>
-                  <span style={{flex:1,fontSize:13.5,fontWeight:600,color:INK,minWidth:0,lineHeight:1.35}}>
+                  <span style={{flex:1,fontSize:14,fontWeight:600,color:INK,minWidth:0,lineHeight:1.35}}>
                     {a.short}{a.room?<span style={{color:FAINT,fontWeight:400}}> #{a.room}</span>:null}
                   </span>
                   {a.photo&&(
-                    <button onClick={()=>setViewPhoto(a.photo)} style={{background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0}}>
+                    <button onClick={()=>setViewPhoto(a.photo)} style={{width:44,height:44,background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
                       <img src={a.photo} style={{width:34,height:34,borderRadius:10,objectFit:"cover",border:`1px solid ${RING}`,boxShadow:"0 4px 10px rgba(15,23,42,.08)"}}/>
                     </button>
                   )}
@@ -1045,14 +1043,14 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
         {/* Issues */}
         {issues.length>0&&(
           <>
-            <p style={{fontSize:11,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>{issues.length} não conformidade{issues.length>1?"s":""}</p>
+            <p style={{fontSize:14,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>{issues.length} não conformidade{issues.length>1?"s":""}</p>
             <Card pad="0" radius={24} style={{background:"#FFFBEB",border:"1px solid #FDE68A",overflow:"hidden",boxShadow:"0 12px 30px rgba(146,64,14,.08)"}}>
               {issues.map((x,i)=>{const c=SC[x.score];return(
                 <div key={i} style={{display:"flex",alignItems:"flex-start",gap:11,padding:"12px 14px",borderBottom:i<issues.length-1?"1px solid #FEF3C7":"none"}}>
-                  <span style={{fontSize:12,fontWeight:900,padding:"4px 9px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,flexShrink:0,marginTop:1}}>{x.score}</span>
+                  <span style={{fontSize:14,fontWeight:900,padding:"4px 9px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,flexShrink:0,marginTop:1}}>{x.score}</span>
                   <div>
-                    <p style={{fontSize:11,fontWeight:700,color:x.areaColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3,lineHeight:1.3}}>{x.area}{x.room?` #${x.room}`:""}</p>
-                    <p style={{fontSize:13.5,color:INK2,lineHeight:1.45}}>{x.item}</p>
+                    <p style={{fontSize:14,fontWeight:700,color:x.areaColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3,lineHeight:1.3}}>{x.area}{x.room?` #${x.room}`:""}</p>
+                    <p style={{fontSize:14,color:INK2,lineHeight:1.45}}>{x.item}</p>
                   </div>
                 </div>);})}
             </Card>
@@ -1062,11 +1060,11 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
         {/* Observations */}
         {areaScores.some(a=>a.notes)&&(
           <Card pad="1rem" radius={24}>
-            <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Observações</p>
+            <p style={{fontSize:14,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Observações</p>
             {areaScores.filter(a=>a.notes).map(a=>(
               <div key={a.id} style={{marginBottom:6}}>
-                <p style={{fontSize:11,fontWeight:700,color:a.color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3,lineHeight:1.3}}>{a.short}{a.room?` #${a.room}`:""}</p>
-                <p style={{fontSize:13.5,color:MUTED,lineHeight:1.6}}>{a.notes}</p>
+                <p style={{fontSize:14,fontWeight:700,color:a.color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3,lineHeight:1.3}}>{a.short}{a.room?` #${a.room}`:""}</p>
+                <p style={{fontSize:14,color:MUTED,lineHeight:1.6}}>{a.notes}</p>
               </div>
             ))}
           </Card>
@@ -1078,7 +1076,7 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
             <p style={{fontSize:14,fontWeight:900,color:urgent?"#991B1B":"#92400E",marginBottom:5,lineHeight:1.35}}>
               {urgent?"Ação imediata — notificar fornecedor":"Notificar fornecedor"}
             </p>
-            <p style={{fontSize:13.5,color:urgent?"#B91C1C":"#B45309",lineHeight:1.6}}>
+            <p style={{fontSize:14,color:urgent?"#B91C1C":"#B45309",lineHeight:1.6}}>
               {urgent?"Item com nota 0–1 identificado. Correção imediata. Escalada à Direção.":"Nota geral abaixo de 4,0. Envie o relatório ao líder de equipe. Prazo: mesmo dia."}
             </p>
           </div>
@@ -1114,7 +1112,7 @@ function DashboardScreen({onBack,onAreas,history}){
   }).filter(a=>a.score!==null&&a.score<4);
 
   const CT=({active,payload,label})=>active&&payload?.length?(
-    <div style={{background:PAPER,border:`1px solid ${RING}`,borderRadius:10,padding:"8px 12px",fontSize:13}}>
+    <div style={{background:PAPER,border:`1px solid ${RING}`,borderRadius:10,padding:"8px 12px",fontSize:14}}>
       <p style={{fontWeight:700,color:INK,marginBottom:2}}>{label}</p>
       <p style={{color:MUTED}}>Nota: {payload[0]?.value?.toFixed(2)||"—"}</p>
     </div>):null;
@@ -1122,11 +1120,11 @@ function DashboardScreen({onBack,onAreas,history}){
   return(
     <div className="au">
       <div style={{background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderBottom:`1px solid ${GLASS_BORDER}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 12px 30px rgba(17,24,39,.08)"}}>
-        <button onClick={onBack} style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
+        <button onClick={onBack} style={{width:44,height:44,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
         <div style={{flex:1}}>
           <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em"}}>Indicadores de Facilities</p>
-          <p style={{fontSize:12,color:FAINT,lineHeight:1.35,marginTop:2}}>{SHEETS_ON?"Sincronizado com Planilha Google":"Dados locais neste dispositivo"}</p>
-          <p style={{fontSize:12,color:MUTED,lineHeight:1.4,marginTop:4}}>Indicadores baseados no histórico local deste dispositivo.</p>
+          <p style={{fontSize:14,color:FAINT,lineHeight:1.35,marginTop:2}}>{SHEETS_ON?"Sincronizado com Planilha Google":"Dados locais neste dispositivo"}</p>
+          <p style={{fontSize:14,color:MUTED,lineHeight:1.4,marginTop:4}}>Indicadores baseados no histórico local deste dispositivo.</p>
         </div>
       </div>
 
@@ -1139,9 +1137,9 @@ function DashboardScreen({onBack,onAreas,history}){
             ["Alertas",weekAlerts||"0","abaixo de 4,0",weekAlerts>0],
           ].map(([title,val,sub,isAlert])=>(
             <Card key={title} pad="14px 10px" radius={24} style={{border:`1px solid ${isAlert?"rgba(243,211,156,.78)":GLASS_BORDER}`,background:isAlert?"rgba(255,247,232,.82)":GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,boxShadow:isAlert?"0 16px 34px rgba(217,119,6,.10)":GLASS_SHADOW}}>
-              <p style={{fontSize:11,color:FAINT,marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",lineHeight:1.2}}>{title}</p>
+              <p style={{fontSize:14,color:FAINT,marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",lineHeight:1.2}}>{title}</p>
               <p style={{fontSize:26,fontWeight:900,color:isAlert?"#D97706":INK,letterSpacing:"-0.05em",lineHeight:.95}}>{val}</p>
-              <p style={{fontSize:11,color:FAINT,marginTop:5,lineHeight:1.25}}>{sub}</p>
+              <p style={{fontSize:14,color:FAINT,marginTop:5,lineHeight:1.25}}>{sub}</p>
             </Card>
           ))}
         </div>
@@ -1149,18 +1147,18 @@ function DashboardScreen({onBack,onAreas,history}){
         {/* Trend chart */}
         {trendData.some(d=>d.count>0)&&(
           <DarkCard pad="1.25rem" radius={28}>
-            <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:4}}>Tendência</p>
+            <p style={{fontSize:14,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:4}}>Tendência</p>
             <p style={{fontSize:16,fontWeight:900,color:"#fff",letterSpacing:"-0.03em",marginBottom:14}}>Nota média — 7 dias</p>
             <ResponsiveContainer width="100%" height={136}>
               <LineChart data={trendData} margin={{top:4,right:4,left:-24,bottom:0}}>
-                <XAxis dataKey="day" tick={{fontSize:11,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
-                <YAxis domain={[2,5]} tick={{fontSize:11,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
+                <XAxis dataKey="day" tick={{fontSize:14,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
+                <YAxis domain={[2,5]} tick={{fontSize:14,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
                 <Tooltip content={<CT/>}/>
                 <ReferenceLine y={4} stroke="rgba(255,255,255,.3)" strokeDasharray="3 3" strokeWidth={1.5}/>
                 <Line type="monotone" dataKey="score" stroke="#10B981" strokeWidth={2.5} dot={{r:3,fill:"#10B981"}} connectNulls/>
               </LineChart>
             </ResponsiveContainer>
-            <p style={{fontSize:11,color:"rgba(255,255,255,.35)",marginTop:6,lineHeight:1.35}}>Linha = padrão mínimo 4,0</p>
+            <p style={{fontSize:14,color:"rgba(255,255,255,.35)",marginTop:6,lineHeight:1.35}}>Linha = padrão mínimo 4,0</p>
           </DarkCard>
         )}
 
@@ -1174,13 +1172,13 @@ function DashboardScreen({onBack,onAreas,history}){
         {/* Below standard areas */}
         {belowAreas.length>0&&(
           <>
-            <p style={{fontSize:11,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>Áreas abaixo de 4,0 esta semana</p>
+            <p style={{fontSize:14,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>Áreas abaixo de 4,0 esta semana</p>
             <Card pad="0" radius={24} style={{overflow:"hidden"}}>
               {belowAreas.map((a,i)=>{const c=scoreColor(a.score);return(
                 <div key={a.id} style={{display:"flex",alignItems:"center",gap:0,borderBottom:i<belowAreas.length-1?`1px solid ${RING}`:"none"}}>
                   <div style={{width:5,alignSelf:"stretch",background:a.color,flexShrink:0}}/>
                   <div style={{display:"flex",alignItems:"center",gap:10,flex:1,padding:"12px 13px"}}>
-                    <span style={{flex:1,fontSize:13.5,fontWeight:600,color:INK,lineHeight:1.35}}>{a.short}</span>
+                    <span style={{flex:1,fontSize:14,fontWeight:600,color:INK,lineHeight:1.35}}>{a.short}</span>
                     <span style={{fontSize:14,fontWeight:900,padding:"4px 12px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,lineHeight:1.2}}>{a.score.toFixed(1)}</span>
                   </div>
                 </div>);})}
@@ -1207,9 +1205,9 @@ function HistoryScreen({history,onBack,onDashboard,onView}){
   return(
     <div className="au">
       <div style={{background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderBottom:`1px solid ${GLASS_BORDER}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 12px 30px rgba(17,24,39,.08)"}}>
-        <button onClick={onBack} style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
+        <button onClick={onBack} style={{width:44,height:44,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
         <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",flex:1}}>Áreas auditadas</p>
-        <span style={{fontSize:12,color:FAINT}}>{sorted.length} auditorias</span>
+        <span style={{fontSize:14,color:FAINT}}>{sorted.length} auditorias</span>
       </div>
       {sorted.length===0
         ?<Card radius={28} style={{margin:"1rem",padding:"2.2rem 1.2rem",textAlign:"center",background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:`1px solid ${GLASS_BORDER}`,boxShadow:GLASS_SHADOW}}>
@@ -1220,7 +1218,7 @@ function HistoryScreen({history,onBack,onDashboard,onView}){
           <div style={{padding:"0.9rem 1rem"}}>
             {Object.entries(grouped).map(([date,audits])=>(
               <div key={date} style={{marginBottom:"1.25rem"}}>
-                <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>{fmtDate(date)}</p>
+                <p style={{fontSize:14,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>{fmtDate(date)}</p>
                 <div style={{display:"flex",flexDirection:"column",gap:9}}>
                   {audits.map(a=>{
                     const sc_=scoreColor(a.overallScore);
@@ -1232,11 +1230,11 @@ function HistoryScreen({history,onBack,onDashboard,onView}){
                           <div style={{display:"flex",alignItems:"center",gap:13,flex:1,padding:"14px 15px 14px 13px"}}>
                             <div style={{width:50,height:50,borderRadius:16,background:sc_.bg,border:`1.5px solid ${sc_.br}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 6px 16px rgba(15,23,42,.06)"}}>
                               <span style={{fontSize:15,fontWeight:900,color:sc_.tx,lineHeight:1}}>{a.overallScore.toFixed(1)}</span>
-                              <span style={{fontSize:10.5,color:sc_.tx,opacity:.6}}>/5</span>
+                              <span style={{fontSize:14,color:sc_.tx,opacity:.6}}>/5</span>
                             </div>
                             <div style={{flex:1,minWidth:0}}>
                               <p style={{fontSize:14,fontWeight:700,color:INK,marginBottom:2,lineHeight:1.3}}>{slot?.time} · {slot?.label}</p>
-                              <p style={{fontSize:12,color:MUTED,lineHeight:1.35}}>{a.auditor}</p>
+                              <p style={{fontSize:14,color:MUTED,lineHeight:1.35}}>{a.auditor}</p>
                             </div>
                             <Pill tone={a.overallScore>=4?"good":"bad"}>{a.overallScore>=4?"Adequado":"Ação"}</Pill>
                           </div>
