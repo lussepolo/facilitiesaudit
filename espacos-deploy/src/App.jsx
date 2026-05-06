@@ -573,9 +573,9 @@ function PhotoCapture({photo,onPhoto,color}){
 }
 
 // Card wrapper
-function Card({children, pad="1.1rem 1.25rem", radius=20, style={}}){
+function Card({children, pad="1.1rem 1.25rem", radius=20, style={}, onClick}){
   return(
-    <div style={{background:PAPER,borderRadius:radius,padding:pad,boxShadow:"0 1px 3px rgba(15,23,42,.06)",border:`1px solid ${RING}`,...style}}>
+    <div onClick={onClick} style={{background:PAPER,borderRadius:radius,padding:pad,boxShadow:"0 1px 3px rgba(15,23,42,.06)",border:`1px solid ${RING}`,...style}}>
       {children}
     </div>
   );
