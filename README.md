@@ -13,6 +13,13 @@ The application lives in `espacos-deploy/`. It is a Vite + React app with:
 
 The production `VITE_SHEETS_URL` value is configured in Netlify environment variables. Do not commit the real Google Apps Script URL to this repository.
 
+## MVP scope
+
+- This is a mobile field audit MVP.
+- Local history is stored in this device/browser.
+- Completed audits are submitted to Google Sheets when `VITE_SHEETS_URL` is configured.
+- Indicadores currently reflects local device history, not a consolidated campus-wide leadership dashboard.
+
 ## Local development
 
 ```bash

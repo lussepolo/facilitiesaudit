@@ -1121,6 +1121,7 @@ function DashboardScreen({onBack,onAreas,history}){
         <div style={{flex:1}}>
           <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em"}}>Indicadores de Facilities</p>
           <p style={{fontSize:12,color:FAINT,lineHeight:1.35,marginTop:2}}>{SHEETS_ON?"Sincronizado com Planilha Google":"Dados locais neste dispositivo"}</p>
+          <p style={{fontSize:12,color:MUTED,lineHeight:1.4,marginTop:4}}>Indicadores baseados no histórico local deste dispositivo.</p>
         </div>
       </div>
 
