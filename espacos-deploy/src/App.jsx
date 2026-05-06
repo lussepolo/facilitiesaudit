@@ -41,6 +41,11 @@ const CSS = `
     flex-shrink:0;
   }
   .score-btn:active { transform:scale(.84); }
+  @media (max-width:380px){
+    .bottom-nav { gap:3px !important; padding-left:6px !important; padding-right:6px !important; }
+    .bottom-nav button { padding-left:2px !important; padding-right:2px !important; }
+    .kpi-grid { grid-template-columns:1fr !important; }
+  }
   textarea, input, button { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif; outline:none; }
   textarea:focus, input:focus {
     border-color:#F5C200 !important;
@@ -448,27 +453,46 @@ function resizePhoto(file){
   });
 }
 
-const Q_KEY="ec_q_v5",LH_KEY="ec_lh_v5";
+const Q_KEY="ec_q_v5",LH_KEY="ec_lh_v5",DRAFT_KEY="ec_draft_v1";
 const qLoad=()=>{try{return JSON.parse(localStorage.getItem(Q_KEY)||"[]");}catch{return[];}};
 const qSave=q=>{try{localStorage.setItem(Q_KEY,JSON.stringify(q));}catch{}};
 const qAdd=e=>{const q=qLoad();q.push(e);qSave(q);};
 const lhLoad=()=>{try{return JSON.parse(localStorage.getItem(LH_KEY)||"[]");}catch{return[];}};
 const lhSave=h=>{try{localStorage.setItem(LH_KEY,JSON.stringify(h.slice(0,200)));}catch{}};
+const draftClear=()=>{try{localStorage.removeItem(DRAFT_KEY);}catch{}};
+const draftSave=d=>{try{localStorage.setItem(DRAFT_KEY,JSON.stringify(d));return true;}catch{return false;}};
+const draftLoad=()=>{
+  try{
+    const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return null;
+    const d=JSON.parse(raw);
+    if(!d||d.completed||!d.audit?.areas||!d.slotId){draftClear();return null;}
+    return d;
+  }catch{draftClear();return null;}
+};
 
 async function saveToSheets(entry){
   if(!SHEETS_ON)return false;
   const slot=SLOTS.find(s=>s.id===entry.slotId);
-  const audited=slot?areasForSlot(slot):AREAS;
+  const audited=(entry.areaIds?.length?AREAS.filter(a=>entry.areaIds.includes(a.id)):(slot?areasForSlot(slot):AREAS));
   const rows=audited.map(a=>({
     id:entry.id,campus:"SP",date:entry.date,slot_id:entry.slotId,slot_label:entry.slotLabel,
+    audit_id:entry.auditId||entry.id,
+    area_submission_id:entry.areaSubmissionIds?.[a.id]||`${entry.auditId||entry.id}-${entry.slotId}-${a.id}`,
+    area_index:entry.areaIndexes?.[a.id]??"",
+    save_type:entry.saveType||"final_completion",
+    audit_status:entry.auditStatus||"completed",
+    updated_at:entry.updatedAt||new Date().toISOString(),
+    completed_at:entry.completedAt||"",
     auditor:entry.auditor,area_id:a.id,area_label:a.label,
     room_number:entry.areas[a.id]?.roomNumber||"",
     area_score:(()=>{const it=(entry.areas[a.id]?.items||[]).filter(s=>s!==null);return it.length?parseFloat(avg(it).toFixed(2)):null;})(),
-    overall_score:parseFloat(entry.overallScore.toFixed(2)),
+    overall_score:entry.overallScore!==null&&entry.overallScore!==undefined?parseFloat(entry.overallScore.toFixed(2)):null,
     notes:entry.areas[a.id]?.notes||"",
     photo_data:entry.areas[a.id]?.photo||null,
     created_at:new Date().toISOString(),
   }));
+  // Apps Script currently appends rows. The stable IDs above allow a future
+  // backend upsert to replace progress rows with final rows by area.
   await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows})});
   return true;
 }
@@ -629,12 +653,12 @@ function BottomNav({active,onAudit,onAreas,onIndicadores}){
     ["Ajustes",null],
   ];
   return(
-    <div style={{position:"sticky",bottom:0,zIndex:30,background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderTop:`1px solid ${GLASS_BORDER}`,boxShadow:"0 -18px 42px rgba(17,24,39,.12)",padding:"9px 8px calc(11px + env(safe-area-inset-bottom))",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4}}>
+    <div className="bottom-nav" style={{position:"sticky",bottom:0,zIndex:30,background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderTop:`1px solid ${GLASS_BORDER}`,boxShadow:"0 -18px 42px rgba(17,24,39,.12)",padding:"9px 8px calc(11px + env(safe-area-inset-bottom))",display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:4,overflow:"hidden"}}>
       {items.map(([label,handler])=>{
         const selected=active===label;
         return(
           <button key={label} onClick={handler||undefined} disabled={!handler}
-            style={{minHeight:48,border:selected?`1px solid ${GLASS_BORDER}`:"1px solid transparent",borderRadius:16,background:selected?GLASS_BLUE:"transparent",color:selected?BLUE:handler?MUTED:FAINT,fontSize:14,fontWeight:selected?900:800,cursor:handler?"pointer":"default",padding:"6px 4px",lineHeight:1.15,boxShadow:selected?"0 8px 18px rgba(31,78,121,.10)":"none"}}>
+            style={{minHeight:48,minWidth:0,border:selected?`1px solid ${GLASS_BORDER}`:"1px solid transparent",borderRadius:16,background:selected?GLASS_BLUE:"transparent",color:selected?BLUE:handler?MUTED:FAINT,fontSize:14,fontWeight:selected?900:800,cursor:handler?"pointer":"default",padding:"6px 4px",lineHeight:1.15,boxShadow:selected?"0 8px 18px rgba(31,78,121,.10)":"none",whiteSpace:"normal",overflowWrap:"anywhere"}}>
             {label}
           </button>
         );
@@ -672,7 +696,7 @@ function NameScreen({onSet}){
         <input value={name} onChange={e=>setName(e.target.value)}
           onKeyDown={e=>e.key==="Enter"&&name.trim()&&onSet(name.trim())}
           placeholder="ex: Ana Lima"
-          style={{width:"100%",fontSize:15,fontWeight:500,padding:"14px 16px",border:`1.5px solid ${RING}`,borderRadius:14,background:PAPER,color:INK,marginBottom:12}}/>
+          style={{width:"100%",fontSize:16,fontWeight:500,padding:"14px 16px",border:`1.5px solid ${RING}`,borderRadius:14,background:PAPER,color:INK,marginBottom:12}}/>
         <button onClick={()=>name.trim()&&onSet(name.trim())} className="btn-scale"
           disabled={!name.trim()}
           style={{width:"100%",padding:"15px",borderRadius:14,border:"none",fontFamily:"inherit",
@@ -687,6 +711,37 @@ function NameScreen({onSet}){
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+function RecoveryScreen({draft,onContinue,onDiscard}){
+  const slot=SLOTS.find(s=>s.id===draft?.slotId);
+  const when=draft?.updated_at?new Date(draft.updated_at).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"";
+  return(
+    <div className="au" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"1.25rem"}}>
+      <Card radius={28} style={{width:"100%",maxWidth:380,padding:"1.35rem",background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:`1px solid ${GLASS_BORDER}`,boxShadow:GLASS_SHADOW}}>
+        <Pill tone="warn">Recuperação</Pill>
+        <h1 style={{fontSize:24,fontWeight:900,color:INK,letterSpacing:"-0.04em",lineHeight:1.12,marginTop:14}}>Auditoria em andamento encontrada</h1>
+        <p style={{fontSize:16,color:MUTED,lineHeight:1.5,marginTop:10}}>Encontramos uma auditoria não concluída neste dispositivo.</p>
+        <div style={{background:PAPER,border:`1px solid ${RING}`,borderRadius:20,padding:"13px 14px",marginTop:16}}>
+          <p style={{fontSize:14,fontWeight:800,color:BLUE,lineHeight:1.3}}>Rodada</p>
+          <p style={{fontSize:16,fontWeight:900,color:INK,lineHeight:1.35,marginTop:3}}>
+            {slot?`${slot.time} · ${slot.label}`:"Rodada não identificada"}{draft?.date?` · ${fmtDate(draft.date)}`:""}
+          </p>
+          {when&&<p style={{fontSize:14,color:MUTED,lineHeight:1.4,marginTop:8}}>Última atualização: {when}</p>}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:9,marginTop:18}}>
+          <button className="btn-scale" onClick={onContinue}
+            style={{width:"100%",minHeight:52,border:"none",borderRadius:18,background:BLUE,color:"#fff",fontSize:16,fontWeight:900,fontFamily:"inherit",cursor:"pointer",boxShadow:"0 14px 28px rgba(31,78,121,.22)"}}>
+            Continuar auditoria
+          </button>
+          <button onClick={onDiscard}
+            style={{width:"100%",minHeight:50,border:`1px solid ${RING}`,borderRadius:18,background:PAPER,color:MUTED,fontSize:16,fontWeight:800,fontFamily:"inherit",cursor:"pointer"}}>
+            Descartar e começar nova
+          </button>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -791,7 +846,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                 <div className="tap" style={{display:"flex",alignItems:"center",gap:0}}>
                   {/* Left color bar */}
                   <div style={{width:6,alignSelf:"stretch",background:done?(done.overallScore>=4?"#10B981":done.overallScore>=3?"#F59E0B":"#F43F5E"):"#CBD5E1",borderRadius:"24px 0 0 24px",flexShrink:0}}/>
-                  <div style={{display:"flex",alignItems:"center",gap:14,flex:1,padding:"16px 15px 16px 13px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:14,flex:1,minWidth:0,padding:"16px 15px 16px 13px",flexWrap:"wrap"}}>
                     {/* Score badge */}
                     <div style={{width:52,height:52,borderRadius:16,flexShrink:0,
                       background:done?sc_.bg:SHEET,border:`1.5px solid ${done?sc_.br:RING}`,
@@ -803,7 +858,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                         <span style={{fontSize:14,color:FAINT,fontWeight:700}}>—</span>
                       )}
                     </div>
-                    <div style={{flex:1}}>
+                    <div style={{flex:"1 1 150px",minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
                         <p style={{fontSize:20,fontWeight:900,color:INK,letterSpacing:"-0.03em",lineHeight:1}}>{slot.time}</p>
                         <Pill tone={done?done.overallScore>=4?"good":"warn":"neutral"}>{status}</Pill>
@@ -818,7 +873,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                         {done.overallScore>=4?"Adequado":"Requer atenção"}
                       </Pill>
                     ):(
-                      <button style={{border:"none",background:BLUE,color:"#fff",borderRadius:16,padding:"12px 14px",fontSize:16,fontWeight:900,cursor:"pointer",boxShadow:"0 10px 18px rgba(31,78,121,.18)",minHeight:44}}>Auditar</button>
+                      <button style={{border:"none",background:BLUE,color:"#fff",borderRadius:16,padding:"12px 14px",fontSize:16,fontWeight:900,cursor:"pointer",boxShadow:"0 10px 18px rgba(31,78,121,.18)",minHeight:44,flex:"0 0 auto"}}>Auditar</button>
                     )}
                   </div>
                 </div>
@@ -830,11 +885,11 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
         {/* Nav buttons */}
         <div style={{display:"flex",gap:8,marginTop:4}}>
           <button onClick={onHistory}
-            style={{flex:1,padding:"14px 12px",minHeight:48,borderRadius:16,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:14,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>
+            style={{flex:1,padding:"14px 12px",minHeight:48,borderRadius:16,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:16,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>
             Áreas
           </button>
           <button onClick={onDashboard} className="btn-scale"
-            style={{flex:2,padding:"14px 12px",minHeight:50,borderRadius:16,border:"none",background:INK,color:"#fff",fontSize:14,fontWeight:900,fontFamily:"inherit",cursor:"pointer",letterSpacing:"0.01em",boxShadow:"0 14px 28px rgba(15,23,42,.22)"}}>
+            style={{flex:2,padding:"14px 12px",minHeight:50,borderRadius:16,border:"none",background:INK,color:"#fff",fontSize:16,fontWeight:900,fontFamily:"inherit",cursor:"pointer",letterSpacing:"0.01em",boxShadow:"0 14px 28px rgba(15,23,42,.22)"}}>
             Indicadores
           </button>
         </div>
@@ -845,7 +900,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
 }
 
 // ─── Tela: Auditoria ──────────────────────────────────────────────────────────
-function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,onNext,onPrev,onDone}){
+function AuditScreen({slot,areaIdx,audit,saveState,onScore,onNotes,onPhoto,onRoomNumber,onNext,onPrev,onDone}){
   const activeAreas=areasForSlot(slot);
   const area=activeAreas[areaIdx];
   const aData=audit.areas[area.id];
@@ -856,6 +911,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
   const areaScore=scored?avg(aData.items.filter(s=>s!==null)):null;
   const areaStatus=areaScore===null?"Pendente":areaScore>=4?"Adequado":areaScore>=2?"Requer atenção":"Crítico";
   const areaTone=areaScore===null?"neutral":areaScore>=4?"good":areaScore>=2?"warn":"bad";
+  const areaPct=Math.round(((areaIdx+1)/activeAreas.length)*100);
 
   return(
     <div className="au" style={{paddingBottom:104}}>
@@ -893,6 +949,10 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
             <p style={{fontSize:22,fontWeight:900,color:areaScore===null?FAINT:scoreColor(areaScore).tx,letterSpacing:"-0.04em",lineHeight:1,marginTop:8}}>{areaScore!==null?areaScore.toFixed(1):"—"}</p>
           </div>
         </div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
+          <p style={{fontSize:14,fontWeight:900,color:INK,lineHeight:1.25}}>Área {areaIdx+1} de {activeAreas.length}</p>
+          <p style={{fontSize:14,fontWeight:800,color:MUTED,lineHeight:1.25}}>{areaPct}% concluído</p>
+        </div>
         <div style={{display:"flex",gap:4}}>
           {activeAreas.map((_,i)=>(
             <div key={i} style={{flex:1,height:5,borderRadius:99,
@@ -900,7 +960,12 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
               transition:"background .2s"}}/>
           ))}
         </div>
-        <p style={{fontSize:14,color:MUTED,fontWeight:700,marginTop:8,lineHeight:1.35}}>{scored} de {area.items.length} itens pontuados</p>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginTop:8}}>
+          <p style={{fontSize:14,color:MUTED,fontWeight:700,lineHeight:1.35}}>{scored} de {area.items.length} itens pontuados</p>
+          <span style={{fontSize:14,fontWeight:800,color:saveState?.tone==="warn"?WARNING:saveState?.tone==="good"?SUCCESS:MUTED,lineHeight:1.35}}>
+            {saveState?.label||"Salvo localmente"}
+          </span>
+        </div>
       </div>
 
       {/* Items */}
@@ -930,7 +995,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
           <p style={{fontSize:14,fontWeight:800,color:BLUE,marginBottom:8}}>Observações e evidências</p>
           <textarea value={aData.notes} onChange={e=>onNotes(area.id,e.target.value)}
             placeholder="Não conformidades específicas, responsável, detalhes…" rows={2}
-            style={{width:"100%",fontSize:14,lineHeight:1.6,padding:"12px 13px",border:`1.5px solid ${RING}`,borderRadius:16,background:SHEET,color:INK,resize:"none"}}/>
+            style={{width:"100%",fontSize:16,lineHeight:1.55,padding:"12px 13px",border:`1.5px solid ${RING}`,borderRadius:16,background:SHEET,color:INK,resize:"none"}}/>
           <PhotoCapture photo={aData.photo} onPhoto={b64=>onPhoto(area.id,b64)} color={area.color}/>
         </Card>
 
@@ -1130,7 +1195,7 @@ function DashboardScreen({onBack,onAreas,history}){
 
       <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:12}}>
         {/* KPI grid */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+        <div className="kpi-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
           {[
             ["Hoje",`${todayA.length}/4`,"auditorias",false],
             ["Semana",weekAvg?weekAvg.toFixed(1):"—","média geral",false],
@@ -1227,12 +1292,12 @@ function HistoryScreen({history,onBack,onDashboard,onView}){
                       <Card key={a.id} pad="0" radius={24} style={{overflow:"hidden",cursor:"pointer"}} onClick={()=>onView(a)}>
                         <div className="tap" style={{display:"flex",alignItems:"center",gap:0}}>
                           <div style={{width:5,alignSelf:"stretch",background:a.overallScore>=4?"#10B981":a.overallScore>=3?"#F59E0B":"#F43F5E",borderRadius:"24px 0 0 24px",flexShrink:0}}/>
-                          <div style={{display:"flex",alignItems:"center",gap:13,flex:1,padding:"14px 15px 14px 13px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:13,flex:1,minWidth:0,padding:"14px 15px 14px 13px",flexWrap:"wrap"}}>
                             <div style={{width:50,height:50,borderRadius:16,background:sc_.bg,border:`1.5px solid ${sc_.br}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 6px 16px rgba(15,23,42,.06)"}}>
                               <span style={{fontSize:15,fontWeight:900,color:sc_.tx,lineHeight:1}}>{a.overallScore.toFixed(1)}</span>
                               <span style={{fontSize:14,color:sc_.tx,opacity:.6}}>/5</span>
                             </div>
-                            <div style={{flex:1,minWidth:0}}>
+                            <div style={{flex:"1 1 130px",minWidth:0}}>
                               <p style={{fontSize:14,fontWeight:700,color:INK,marginBottom:2,lineHeight:1.3}}>{slot?.time} · {slot?.label}</p>
                               <p style={{fontSize:14,color:MUTED,lineHeight:1.35}}>{a.auditor}</p>
                             </div>
@@ -1256,30 +1321,108 @@ function HistoryScreen({history,onBack,onDashboard,onView}){
 export default function EspacosApp(){
   const[screen,   setScreen] =useState("name");
   const[auditor,  setAuditor]=useState(()=>localStorage.getItem("ec_auditor")||"");
-  const[date]                =useState(todaySP);
+  const[date,     setDate]   =useState(todaySP);
   const[slot,     setSlot]   =useState(null);
   const[areaIdx,  setAreaIdx]=useState(0);
   const[audit,    setAudit]  =useState(null);
   const[history,  setHistory]=useState(()=>lhLoad());
   const[viewData, setViewData]=useState(null);
   const[pending,  setPending]=useState(()=>qLoad().length);
+  const[draft,    setDraft]  =useState(()=>draftLoad());
+  const[saveState,setSaveState]=useState({label:"Salvo localmente",tone:"good"});
 
   useEffect(()=>{
-    if(auditor)setScreen("home");
+    if(draft){setScreen("recover");}
+    else if(auditor)setScreen("home");
+  },[]);
+
+  useEffect(()=>{
     if(SHEETS_ON&&qLoad().length){syncQueue().then(n=>{if(n>0)setPending(qLoad().length);});}
   },[]);
+
+  const makeDraft=()=>{
+    if(!audit||!slot)return null;
+    return{
+      auditor,date,slotId:slot.id,slotLabel:slot.label,areaIdx,audit,
+      updated_at:new Date().toISOString(),
+      completed:false,
+    };
+  };
+
+  const saveDraftNow=()=>{
+    const d=makeDraft();if(!d)return false;
+    const ok=draftSave(d);
+    if(ok){setDraft(d);setSaveState({label:"Salvo localmente",tone:"good"});}
+    return ok;
+  };
+
+  useEffect(()=>{
+    if(screen==="audit"&&audit&&slot)saveDraftNow();
+  },[screen,auditor,date,slot,areaIdx,audit]);
 
   const completeAudit=async()=>{
     const active=areasForSlot(slot);
     const aScores=active.map(a=>{const it=audit.areas[a.id].items.filter(s=>s!==null);return it.length?avg(it):null;}).filter(s=>s!==null);
     const overallScore=avg(aScores)||0;
-    const entry={id:Date.now().toString(),timestamp:Date.now(),campus:"SP",date,slotId:slot.id,slotLabel:slot.label,overallScore,areas:audit.areas,auditor};
+    const auditId=audit.auditId||`${date}-${slot.id}-${Date.now()}`;
+    const entry={
+      id:auditId,timestamp:Date.now(),campus:"SP",date,slotId:slot.id,slotLabel:slot.label,overallScore,areas:audit.areas,auditor,
+      auditId,saveType:"final_completion",auditStatus:"completed",
+      updatedAt:new Date().toISOString(),completedAt:new Date().toISOString(),
+      areaIndexes:Object.fromEntries(active.map((a,i)=>[a.id,i+1])),
+      areaSubmissionIds:Object.fromEntries(active.map(a=>[a.id,`${auditId}-${slot.id}-${a.id}`])),
+    };
     const updated=[...history.filter(a=>!(a.date===date&&a.slotId===slot.id)),entry];
     lhSave(updated);setHistory(updated);
     if(SHEETS_ON){
       saveToSheets(entry).catch(()=>{qAdd(entry);setPending(p=>p+1);});
     }
+    draftClear();setDraft(null);
     setViewData(entry);setScreen("summary");
+  };
+
+  const saveAreaProgress=areaIndex=>{
+    saveDraftNow();
+    if(!SHEETS_ON||!audit||!slot)return;
+    const active=areasForSlot(slot);
+    const area=active[areaIndex];
+    if(!area)return;
+    const auditId=audit.auditId||`${date}-${slot.id}`;
+    const it=audit.areas[area.id].items.filter(s=>s!==null);
+    const areaScore=it.length?avg(it):null;
+    const entry={
+      id:auditId,
+      timestamp:Date.now(),campus:"SP",date,slotId:slot.id,slotLabel:slot.label,
+      overallScore:areaScore,areas:audit.areas,auditor,auditId,
+      areaIds:[area.id],
+      areaIndexes:{[area.id]:areaIndex+1},
+      areaSubmissionIds:{[area.id]:`${auditId}-${slot.id}-${area.id}`},
+      saveType:"area_progress",
+      auditStatus:"progress",
+      updatedAt:new Date().toISOString(),
+      completedAt:"",
+    };
+    setSaveState({label:"Salvando...",tone:"neutral"});
+    saveToSheets(entry)
+      .then(()=>setSaveState({label:"Última área enviada para a planilha",tone:"good"}))
+      .catch(()=>{qAdd(entry);setPending(p=>p+1);setSaveState({label:"Envio pendente",tone:"warn"});});
+  };
+
+  const continueDraft=()=>{
+    const slotDraft=SLOTS.find(s=>s.id===draft?.slotId);
+    if(!draft||!slotDraft||!draft.audit?.areas){draftClear();setDraft(null);setScreen(auditor?"home":"name");return;}
+    setAuditor(draft.auditor||auditor);
+    if(draft.auditor)localStorage.setItem("ec_auditor",draft.auditor);
+    setDate(draft.date||todaySP());
+    setSlot(slotDraft);
+    setAreaIdx(Math.max(0,Math.min(draft.areaIdx||0,areasForSlot(slotDraft).length-1)));
+    setAudit(draft.audit);
+    setSaveState({label:"Salvo localmente",tone:"good"});
+    setScreen("audit");
+  };
+
+  const discardDraft=()=>{
+    draftClear();setDraft(null);setScreen(auditor?"home":"name");
   };
 
   const hScore=(aId,i,v)=>setAudit(p=>({...p,areas:{...p.areas,[aId]:{...p.areas[aId],items:p.areas[aId].items.map((s,j)=>j===i?v:s)}}}));
@@ -1291,14 +1434,16 @@ export default function EspacosApp(){
     <>
       <style>{CSS}</style>
       <div className="app">
+        {screen==="recover" &&draft&&<RecoveryScreen draft={draft} onContinue={continueDraft} onDiscard={discardDraft}/>}
         {screen==="name"    &&<NameScreen onSet={n=>{localStorage.setItem("ec_auditor",n);setAuditor(n);setScreen("home");}}/>}
         {screen==="home"    &&<HomeScreen date={date} history={history} auditor={auditor} pending={pending}
-          onStart={s=>{setSlot(s);setAudit(emptyAudit());setAreaIdx(0);setScreen("audit");}}
+          onStart={s=>{setSlot(s);setAudit({...emptyAudit(),auditId:`${date}-${s.id}-${Date.now()}`});setAreaIdx(0);setScreen("audit");}}
           onView={a=>{setViewData(a);setScreen("summary");}}
           onDashboard={()=>setScreen("dashboard")} onHistory={()=>setScreen("history")}/>}
         {screen==="audit"   &&audit&&slot&&<AuditScreen slot={slot} areaIdx={areaIdx} audit={audit}
+          saveState={saveState}
           onScore={hScore} onNotes={hNotes} onPhoto={hPhoto} onRoomNumber={hRoom}
-          onNext={()=>setAreaIdx(i=>i+1)}
+          onNext={()=>{saveAreaProgress(areaIdx);setAreaIdx(i=>i+1);}}
           onPrev={()=>areaIdx===0?setScreen("home"):setAreaIdx(i=>i-1)}
           onDone={completeAudit}/>}
         {screen==="summary" &&viewData&&<SummaryScreen auditData={viewData} onHome={()=>setScreen("home")} onNewAudit={()=>setScreen("home")}/>}
