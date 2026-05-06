@@ -69,6 +69,11 @@ const WARNING = "#B45309";
 const DANGER = "#B42318";
 const SHADOW="0 16px 36px rgba(17,24,39,.08)";
 const SOFT_SHADOW="0 8px 24px rgba(17,24,39,.06)";
+const GLASS_SURFACE="rgba(255,255,255,.74)";
+const GLASS_BLUE="rgba(232,241,248,.78)";
+const GLASS_BORDER="rgba(217,225,234,.72)";
+const GLASS_SHADOW="0 18px 42px rgba(17,24,39,.12)";
+const GLASS_BLUR="blur(18px) saturate(1.35)";
 
 const SC={
   0:{bg:"#FEE2E2",br:"#FCA5A5",tx:"#7F1D1D",lbl:"Crítico"},
@@ -626,12 +631,12 @@ function BottomNav({active,onAudit,onAreas,onIndicadores}){
     ["Ajustes",null],
   ];
   return(
-    <div style={{position:"sticky",bottom:0,zIndex:30,background:"rgba(255,255,255,.96)",borderTop:`1px solid ${RING}`,boxShadow:"0 -12px 32px rgba(17,24,39,.08)",padding:"8px 8px 10px",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4}}>
+    <div style={{position:"sticky",bottom:0,zIndex:30,background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderTop:`1px solid ${GLASS_BORDER}`,boxShadow:"0 -18px 42px rgba(17,24,39,.12)",padding:"9px 8px 11px",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4}}>
       {items.map(([label,handler])=>{
         const selected=active===label;
         return(
           <button key={label} onClick={handler||undefined} disabled={!handler}
-            style={{minHeight:48,border:"none",borderRadius:14,background:selected?SOFT_BLUE:"transparent",color:selected?BLUE:handler?MUTED:FAINT,fontSize:11.5,fontWeight:selected?900:800,cursor:handler?"pointer":"default",padding:"6px 4px",lineHeight:1.15}}>
+            style={{minHeight:48,border:selected?`1px solid ${GLASS_BORDER}`:"1px solid transparent",borderRadius:16,background:selected?GLASS_BLUE:"transparent",color:selected?BLUE:handler?MUTED:FAINT,fontSize:11.5,fontWeight:selected?900:800,cursor:handler?"pointer":"default",padding:"6px 4px",lineHeight:1.15,boxShadow:selected?"0 8px 18px rgba(31,78,121,.10)":"none"}}>
             {label}
           </button>
         );
@@ -710,7 +715,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
   return(
     <div className="au" style={{paddingBottom:10}}>
       {/* Nav */}
-      <div style={{padding:"1.1rem 1rem 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{padding:"1.1rem 1rem 0",display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative",zIndex:2}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:44,height:44,borderRadius:16,background:SOFT_BLUE,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 8px 18px rgba(31,78,121,.12)",border:`1px solid #C9DCEB`}}>
             <span style={{fontSize:13,fontWeight:900,color:BLUE}}>EC</span>
@@ -857,7 +862,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
   return(
     <div className="au" style={{paddingBottom:104}}>
       {/* Header */}
-      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.95rem 1rem 0.85rem",boxShadow:"0 8px 22px rgba(15,23,42,.04)"}}>
+      <div style={{background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderBottom:`1px solid ${GLASS_BORDER}`,padding:"0.95rem 1rem 0.85rem",boxShadow:"0 12px 30px rgba(17,24,39,.08)"}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
           <button onClick={onPrev}
             style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>
@@ -998,11 +1003,11 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
             <ScoreRing score={overallScore} size={96}/>
           </div>
           <div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
-            <div style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.12)",borderRadius:18,padding:"12px"}}>
+            <div style={{background:"rgba(255,255,255,.16)",backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:"1px solid rgba(255,255,255,.20)",borderRadius:22,padding:"12px",boxShadow:"0 12px 26px rgba(17,24,39,.10)"}}>
               <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.58)",lineHeight:1.25}}>Registro</p>
               <p style={{fontSize:16,fontWeight:900,color:"#fff",lineHeight:1.25,marginTop:4}}>Auditoria concluída</p>
             </div>
-            <div style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.12)",borderRadius:18,padding:"12px"}}>
+            <div style={{background:"rgba(255,255,255,.16)",backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:"1px solid rgba(255,255,255,.20)",borderRadius:22,padding:"12px",boxShadow:"0 12px 26px rgba(17,24,39,.10)"}}>
               <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.58)",lineHeight:1.25}}>Persistência</p>
               <p style={{fontSize:16,fontWeight:900,color:"#fff",lineHeight:1.25,marginTop:4}}>{SHEETS_ON?"Planilha ativa":"Modo local"}</p>
             </div>
@@ -1116,7 +1121,7 @@ function DashboardScreen({onBack,onAreas,history}){
 
   return(
     <div className="au">
-      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 22px rgba(15,23,42,.04)"}}>
+      <div style={{background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderBottom:`1px solid ${GLASS_BORDER}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 12px 30px rgba(17,24,39,.08)"}}>
         <button onClick={onBack} style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
         <div style={{flex:1}}>
           <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em"}}>Indicadores de Facilities</p>
@@ -1133,7 +1138,7 @@ function DashboardScreen({onBack,onAreas,history}){
             ["Semana",weekAvg?weekAvg.toFixed(1):"—","média geral",false],
             ["Alertas",weekAlerts||"0","abaixo de 4,0",weekAlerts>0],
           ].map(([title,val,sub,isAlert])=>(
-            <Card key={title} pad="14px 10px" radius={22} style={{border:`1px solid ${isAlert?"#FDE68A":RING}`,background:isAlert?"#FFFBEB":PAPER,boxShadow:isAlert?"0 12px 28px rgba(217,119,6,.08)":SOFT_SHADOW}}>
+            <Card key={title} pad="14px 10px" radius={24} style={{border:`1px solid ${isAlert?"rgba(243,211,156,.78)":GLASS_BORDER}`,background:isAlert?"rgba(255,247,232,.82)":GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,boxShadow:isAlert?"0 16px 34px rgba(217,119,6,.10)":GLASS_SHADOW}}>
               <p style={{fontSize:11,color:FAINT,marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",lineHeight:1.2}}>{title}</p>
               <p style={{fontSize:26,fontWeight:900,color:isAlert?"#D97706":INK,letterSpacing:"-0.05em",lineHeight:.95}}>{val}</p>
               <p style={{fontSize:11,color:FAINT,marginTop:5,lineHeight:1.25}}>{sub}</p>
@@ -1160,7 +1165,7 @@ function DashboardScreen({onBack,onAreas,history}){
         )}
 
         {!trendData.some(d=>d.count>0)&&history.length>0&&(
-          <Card radius={24} style={{textAlign:"center",padding:"1.6rem 1rem"}}>
+          <Card radius={26} style={{textAlign:"center",padding:"1.6rem 1rem",background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:`1px solid ${GLASS_BORDER}`,boxShadow:GLASS_SHADOW}}>
             <p style={{fontSize:17,fontWeight:900,color:INK,letterSpacing:"-0.02em",marginBottom:6}}>Indicadores em formação</p>
             <p style={{fontSize:14,color:MUTED,lineHeight:1.5}}>Continue registrando auditorias para consolidar tendência semanal.</p>
           </Card>
@@ -1184,7 +1189,7 @@ function DashboardScreen({onBack,onAreas,history}){
         )}
 
         {history.length===0&&(
-          <Card radius={26} style={{textAlign:"center",padding:"2.2rem 1.2rem"}}>
+          <Card radius={28} style={{textAlign:"center",padding:"2.2rem 1.2rem",background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:`1px solid ${GLASS_BORDER}`,boxShadow:GLASS_SHADOW}}>
             <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",marginBottom:8}}>Nenhuma auditoria registrada</p>
             <p style={{fontSize:15,color:MUTED,lineHeight:1.5}}>Faça a primeira rodada para ativar os indicadores operacionais.</p>
           </Card>
@@ -1201,13 +1206,13 @@ function HistoryScreen({history,onBack,onDashboard,onView}){
   const grouped=sorted.reduce((acc,a)=>{if(!acc[a.date])acc[a.date]=[];acc[a.date].push(a);return acc;},{});
   return(
     <div className="au">
-      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 22px rgba(15,23,42,.04)"}}>
+      <div style={{background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderBottom:`1px solid ${GLASS_BORDER}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 12px 30px rgba(17,24,39,.08)"}}>
         <button onClick={onBack} style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
         <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",flex:1}}>Áreas auditadas</p>
         <span style={{fontSize:12,color:FAINT}}>{sorted.length} auditorias</span>
       </div>
       {sorted.length===0
-        ?<Card radius={26} style={{margin:"1rem",padding:"2.2rem 1.2rem",textAlign:"center"}}>
+        ?<Card radius={28} style={{margin:"1rem",padding:"2.2rem 1.2rem",textAlign:"center",background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,border:`1px solid ${GLASS_BORDER}`,boxShadow:GLASS_SHADOW}}>
           <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",marginBottom:8}}>Nenhuma área auditada</p>
           <p style={{fontSize:15,color:MUTED,lineHeight:1.5}}>As rodadas concluídas aparecerão aqui para revisão.</p>
         </Card>
