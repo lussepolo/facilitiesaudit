@@ -14,7 +14,7 @@ const CSS = `
   .app {
     font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;
-    background:#EEF1F6;
+    background:#F5F7FA;
     min-height:100vh;
     color:#0F172A;
     max-width:430px;
@@ -31,10 +31,13 @@ const CSS = `
   .btn-scale { transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease; cursor:pointer; }
   .btn-scale:active { transform:scale(.97); }
   .score-btn {
-    width:44px; height:44px; border-radius:50%; border:1.5px solid;
-    font-size:15px; font-weight:800;
+    width:100%; min-height:52px; border-radius:999px; border:1.5px solid;
+    font-size:16px; font-weight:900;
     font-family:'DM Sans',system-ui,sans-serif;
     cursor:pointer; display:flex; align-items:center; justify-content:center;
+    padding:0 12px;
+    line-height:1.18;
+    text-align:center;
     box-shadow:0 1px 0 rgba(15,23,42,.04);
     transition:transform .1s, box-shadow .12s, border-color .12s, background .12s;
     flex-shrink:0;
@@ -49,17 +52,23 @@ const CSS = `
 `;
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
-const INK   = "#0F172A"; // slate-950
-const INK2  = "#1E293B"; // slate-800
-const MUTED = "#64748B"; // slate-500
-const FAINT = "#94A3B8"; // slate-400
+const INK   = "#111827";
+const INK2  = "#1F2937";
+const MUTED = "#667085";
+const FAINT = "#98A2B3";
 const PAPER = "#FFFFFF";
-const SHEET = "#F8FAFC"; // slate-50
-const RING  = "#E2E8F0"; // slate-200
-const BG    = "#EEF1F6";
+const SHEET = "#F8FAFC";
+const RING  = "#D9E1EA";
+const BG    = "#F5F7FA";
 const YELLOW= "#F5C200";
-const SHADOW="0 14px 34px rgba(15,23,42,.08)";
-const SOFT_SHADOW="0 8px 22px rgba(15,23,42,.06)";
+const BLUE  = "#1F4E79";
+const DARK_BLUE = "#14324F";
+const SOFT_BLUE = "#E8F1F8";
+const SUCCESS = "#15803D";
+const WARNING = "#B45309";
+const DANGER = "#B42318";
+const SHADOW="0 16px 36px rgba(17,24,39,.08)";
+const SOFT_SHADOW="0 8px 24px rgba(17,24,39,.06)";
 
 const SC={
   0:{bg:"#FEE2E2",br:"#FCA5A5",tx:"#7F1D1D",lbl:"Crítico"},
@@ -72,11 +81,11 @@ const SC={
 
 const scoreColor=s=>{
   if(s===null||s===undefined)return{bg:SHEET,br:RING,tx:FAINT};
-  if(s>=4.5)return{bg:"#DCFCE7",br:"#6EE7B7",tx:"#065F46"};
-  if(s>=4.0)return{bg:"#D1FAE5",br:"#6EE7B7",tx:"#065F46"};
-  if(s>=3.0)return{bg:"#FEF3C7",br:"#FDE68A",tx:"#92400E"};
-  if(s>=2.0)return{bg:"#FFEDD5",br:"#FED7AA",tx:"#9A3412"};
-  return{bg:"#FEE2E2",br:"#FECACA",tx:"#991B1B"};
+  if(s>=4.5)return{bg:"#EAF8EF",br:"#BBE7C9",tx:SUCCESS};
+  if(s>=4.0)return{bg:"#E8F1F8",br:"#B7CCE0",tx:BLUE};
+  if(s>=3.0)return{bg:"#FFF7E8",br:"#F3D39C",tx:WARNING};
+  if(s>=2.0)return{bg:"#FFF3E6",br:"#F0BF8A",tx:WARNING};
+  return{bg:"#FDECEC",br:"#F3B4AE",tx:DANGER};
 };
 
 const itemState=s=>{
@@ -526,12 +535,20 @@ function StateIcon({state}){
 
 // Score buttons row
 function ScoreRow({value,onChange}){
+  const labels={
+    0:"0 · Crítico",
+    1:"1 · Muito abaixo",
+    2:"2 · Abaixo do esperado",
+    3:"3 · Regular",
+    4:"4 · Adequado",
+    5:"5 · Excelente",
+  };
   return(
-    <div style={{display:"flex",gap:6,justifyContent:"space-between"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
       {[0,1,2,3,4,5].map(s=>{
         const c=SC[s];const on=value===s;
         return <button key={s} className="score-btn" onClick={()=>onChange(s)}
-          style={{background:on?c.bg:PAPER,borderColor:on?c.tx:RING,color:on?c.tx:FAINT,fontWeight:900,boxShadow:on?`0 0 0 3px ${c.br}66, 0 8px 18px ${c.br}55`:"0 1px 0 rgba(15,23,42,.04)",transform:on?"translateY(-1px)":"none"}}>{s}</button>;
+          style={{background:on?c.bg:PAPER,borderColor:on?c.tx:RING,color:on?c.tx:MUTED,fontWeight:900,boxShadow:on?`0 0 0 3px ${c.br}66, 0 10px 20px ${c.br}55`:"0 1px 0 rgba(17,24,39,.04)",transform:on?"translateY(-1px)":"none"}}>{labels[s]}</button>;
       })}
     </div>
   );
@@ -584,10 +601,49 @@ function Card({children, pad="1.1rem 1.25rem", radius=24, style={}, onClick}){
   );
 }
 
+function MetricCard({label,value,tone="neutral"}){
+  const palette={
+    neutral:{bg:PAPER,tx:INK,border:RING},
+    blue:{bg:SOFT_BLUE,tx:BLUE,border:"#C9DCEB"},
+    warn:{bg:"#FFF7E8",tx:WARNING,border:"#F3D39C"},
+    danger:{bg:"#FDECEC",tx:DANGER,border:"#F3B4AE"},
+    good:{bg:"#EAF8EF",tx:SUCCESS,border:"#BBE7C9"},
+  }[tone]||{bg:PAPER,tx:INK,border:RING};
+  return(
+    <div style={{background:palette.bg,border:`1px solid ${palette.border}`,borderRadius:20,padding:"13px 12px",minHeight:86}}>
+      <p style={{fontSize:12,fontWeight:800,color:MUTED,lineHeight:1.25,marginBottom:8}}>{label}</p>
+      <p style={{fontSize:26,fontWeight:900,color:palette.tx,letterSpacing:"-0.05em",lineHeight:1}}>{value}</p>
+    </div>
+  );
+}
+
+function BottomNav({active,onAudit,onAreas,onIndicadores}){
+  const items=[
+    ["Auditoria",onAudit],
+    ["Áreas",onAreas],
+    ["Indicadores",onIndicadores],
+    ["Fornecedores",null],
+    ["Ajustes",null],
+  ];
+  return(
+    <div style={{position:"sticky",bottom:0,zIndex:30,background:"rgba(255,255,255,.96)",borderTop:`1px solid ${RING}`,boxShadow:"0 -12px 32px rgba(17,24,39,.08)",padding:"8px 8px 10px",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4}}>
+      {items.map(([label,handler])=>{
+        const selected=active===label;
+        return(
+          <button key={label} onClick={handler||undefined} disabled={!handler}
+            style={{minHeight:48,border:"none",borderRadius:14,background:selected?SOFT_BLUE:"transparent",color:selected?BLUE:handler?MUTED:FAINT,fontSize:11.5,fontWeight:selected?900:800,cursor:handler?"pointer":"default",padding:"6px 4px",lineHeight:1.15}}>
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // Dark card
 function DarkCard({children, pad="1.25rem", radius=26, style={}}){
   return(
-    <div style={{background:INK,borderRadius:radius,padding:pad,boxShadow:"0 18px 42px rgba(15,23,42,.22)",border:"1px solid rgba(255,255,255,.08)",...style}}>
+    <div style={{background:DARK_BLUE,borderRadius:radius,padding:pad,boxShadow:"0 18px 42px rgba(17,24,39,.22)",border:"1px solid rgba(255,255,255,.08)",...style}}>
       {children}
     </div>
   );
@@ -637,62 +693,94 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
   const dayAudits=history.filter(a=>a.date===date);
   const dayAvg=avg(dayAudits.map(a=>a.overallScore).filter(Boolean));
   const alerts=dayAudits.filter(a=>a.overallScore<4).length;
+  const completedSlots=dayAudits.length;
+  const completionPct=Math.round((completedSlots/SLOTS.length)*100);
+  const nextSlot=SLOTS.find(s=>!dayAudits.some(a=>a.slotId===s.id))||SLOTS[SLOTS.length-1];
+  const criticalFindings=dayAudits.reduce((total,aud)=>{
+    const slot=SLOTS.find(s=>s.id===aud.slotId);
+    return total+areasForSlot(slot).flatMap(area=>aud.areas?.[area.id]?.items||[]).filter(s=>s!==null&&s<2).length;
+  },0);
+  const pendingAreas=SLOTS.filter(s=>!dayAudits.some(a=>a.slotId===s.id)).reduce((total,s)=>total+areasForSlot(s).length,0);
+  const vendorActions=dayAudits.reduce((total,aud)=>{
+    const slot=SLOTS.find(s=>s.id===aud.slotId);
+    const hasIssue=areasForSlot(slot).some(area=>(aud.areas?.[area.id]?.items||[]).some(s=>s!==null&&s<4));
+    return total+(hasIssue?1:0);
+  },0);
 
   return(
-    <div className="au">
+    <div className="au" style={{paddingBottom:10}}>
       {/* Nav */}
       <div style={{padding:"1.1rem 1rem 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:40,height:40,borderRadius:13,background:YELLOW,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 8px 18px rgba(245,194,0,.24)"}}>
-            <span style={{fontSize:12,fontWeight:900,color:INK}}>EC</span>
+          <div style={{width:44,height:44,borderRadius:16,background:SOFT_BLUE,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 8px 18px rgba(31,78,121,.12)",border:`1px solid #C9DCEB`}}>
+            <span style={{fontSize:13,fontWeight:900,color:BLUE}}>EC</span>
           </div>
           <div>
-            <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",lineHeight:1.15}}>Qualidade dos Espaços</p>
-            <p style={{fontSize:12,fontWeight:600,color:INK,lineHeight:1.35,marginTop:2}}>{fmtDate(date)}</p>
+            <p style={{fontSize:12,fontWeight:800,color:BLUE,lineHeight:1.2}}>Inteligência de Facilities</p>
+            <p style={{fontSize:12,fontWeight:600,color:MUTED,lineHeight:1.35,marginTop:2}}>Campus São Paulo · {fmtDate(date)}</p>
           </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {pending>0&&<Pill tone="warn">{pending} offline</Pill>}
-          <span style={{fontSize:12,fontWeight:600,color:MUTED}}>{auditor}</span>
+        <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}}>
+          {pending>0&&<Pill tone="warn">{pending} pendente{pending>1?"s":""}</Pill>}
+          <span style={{fontSize:12,fontWeight:800,color:INK,textAlign:"right"}}>{auditor}</span>
         </div>
       </div>
 
-      <div style={{padding:"0.85rem 1rem 1rem",display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:16}}>
         {/* Hero dark card */}
-        <DarkCard pad="1.35rem" radius={28} style={{background:INK}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
+        <DarkCard pad="1.35rem" radius={30}>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,marginBottom:"1.1rem"}}>
             <div>
-              <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.18em",marginBottom:6}}>Hoje</p>
-              <p style={{fontSize:46,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:.95}}>
-                {dayAvg?dayAvg.toFixed(1):"—"}
-              </p>
-              <p style={{fontSize:13,color:"rgba(255,255,255,.5)",marginTop:4}}>Média do dia</p>
+              <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.55)",lineHeight:1.25,marginBottom:8}}>Auditoria de Facilities · Campus São Paulo</p>
+              <h2 style={{fontSize:28,fontWeight:900,color:"#fff",letterSpacing:"-0.05em",lineHeight:1.02,marginBottom:8}}>Rodada de hoje</h2>
+              <p style={{fontSize:15,color:"rgba(255,255,255,.68)",lineHeight:1.45}}>Próxima janela: {nextSlot.time} · {nextSlot.label}</p>
             </div>
-            {dayAvg&&<ScoreRing score={dayAvg} size={88}/>}
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <p style={{fontSize:38,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:.95}}>{completionPct}%</p>
+              <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.55)",marginTop:5}}>concluída</p>
+            </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:9}}>
+          <div style={{height:9,borderRadius:99,background:"rgba(255,255,255,.12)",overflow:"hidden",marginBottom:14}}>
+            <div style={{width:`${completionPct}%`,height:"100%",borderRadius:99,background:YELLOW}}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:9}}>
             {[
-              [`${dayAudits.length}/4`,"realizadas"],
-              [alerts||"0","alertas"],
-              [SHEETS_ON?"✓":"—",SHEETS_ON?"Sheets":"local"],
+              [`${completedSlots}/4`,"auditorias concluídas"],
+              [criticalFindings||"0","ocorrências críticas"],
+              [pendingAreas||"0","áreas pendentes"],
+              [vendorActions||"0","ações com fornecedor"],
             ].map(([v,l])=>(
-              <div key={l} style={{background:"rgba(255,255,255,.09)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:"11px 8px 9px",textAlign:"center"}}>
-                <p style={{fontSize:18,fontWeight:900,color:"#fff",lineHeight:1}}>{v}</p>
-                <p style={{fontSize:10.5,color:"rgba(255,255,255,.4)",marginTop:4,textTransform:"uppercase",letterSpacing:"0.08em",lineHeight:1.2}}>{l}</p>
+              <div key={l} style={{background:"rgba(255,255,255,.09)",border:"1px solid rgba(255,255,255,.08)",borderRadius:18,padding:"13px 11px 11px"}}>
+                <p style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:"-0.04em",lineHeight:1}}>{v}</p>
+                <p style={{fontSize:12,color:"rgba(255,255,255,.58)",marginTop:6,lineHeight:1.25}}>{l}</p>
               </div>
             ))}
           </div>
         </DarkCard>
 
+        {pending>0&&(
+          <Card radius={24} style={{background:"#FFF7E8",border:"1px solid #F3D39C",boxShadow:"0 12px 28px rgba(180,83,9,.08)"}}>
+            <p style={{fontSize:16,fontWeight:900,color:WARNING,letterSpacing:"-0.02em",lineHeight:1.25}}>Envio pendente</p>
+            <p style={{fontSize:14,color:"#92400E",lineHeight:1.5,marginTop:6}}>
+              Há {pending} registro{pending>1?"s":""} aguardando sincronização quando a conexão estiver disponível.
+            </p>
+          </Card>
+        )}
+
         {/* Slots */}
-        <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginTop:4}}>
-          Horários de auditoria
-        </p>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+          <div>
+            <p style={{fontSize:20,fontWeight:900,color:INK,letterSpacing:"-0.04em",lineHeight:1.15}}>Áreas e rodadas</p>
+            <p style={{fontSize:13,color:MUTED,lineHeight:1.4,marginTop:2}}>Escolha uma rodada para auditar ou revisar.</p>
+          </div>
+          <Pill tone={SHEETS_ON?"good":"neutral"}>{SHEETS_ON?"Planilha ativa":"Modo local"}</Pill>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:11}}>
           {SLOTS.map(slot=>{
             const done=dayAudits.find(a=>a.slotId===slot.id);
             const sc_=done?scoreColor(done.overallScore):null;
             const areaCount=areasForSlot(slot).length;
+            const status=done?done.overallScore>=4?"Resolvido":"Ação do fornecedor":"Pendente";
             return(
               <Card key={slot.id} pad="0" radius={24}
                 style={{overflow:"hidden",cursor:"pointer",border:`1px solid ${done?sc_.br:RING}`,boxShadow:done?"0 12px 30px rgba(15,23,42,.08)":SOFT_SHADOW}}
@@ -700,7 +788,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                 <div className="tap" style={{display:"flex",alignItems:"center",gap:0}}>
                   {/* Left color bar */}
                   <div style={{width:6,alignSelf:"stretch",background:done?(done.overallScore>=4?"#10B981":done.overallScore>=3?"#F59E0B":"#F43F5E"):"#CBD5E1",borderRadius:"24px 0 0 24px",flexShrink:0}}/>
-                  <div style={{display:"flex",alignItems:"center",gap:13,flex:1,padding:"15px 15px 15px 13px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:14,flex:1,padding:"16px 15px 16px 13px"}}>
                     {/* Score badge */}
                     <div style={{width:52,height:52,borderRadius:16,flexShrink:0,
                       background:done?sc_.bg:SHEET,border:`1.5px solid ${done?sc_.br:RING}`,
@@ -713,18 +801,21 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                       )}
                     </div>
                     <div style={{flex:1}}>
-                      <p style={{fontSize:19,fontWeight:900,color:INK,letterSpacing:"-0.03em",marginBottom:2}}>{slot.time}</p>
-                      <p style={{fontSize:12.5,color:MUTED,lineHeight:1.35}}>{slot.label}</p>
-                      <p style={{fontSize:11,color:FAINT,marginTop:3,lineHeight:1.3}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                        <p style={{fontSize:20,fontWeight:900,color:INK,letterSpacing:"-0.03em",lineHeight:1}}>{slot.time}</p>
+                        <Pill tone={done?done.overallScore>=4?"good":"warn":"neutral"}>{status}</Pill>
+                      </div>
+                      <p style={{fontSize:15,color:INK2,lineHeight:1.35,fontWeight:800}}>{slot.label}</p>
+                      <p style={{fontSize:13,color:MUTED,marginTop:4,lineHeight:1.35}}>
                         {!slot.classroomsIncluded?"Salas excluídas · ":""}{areaCount} áreas
                       </p>
                     </div>
                     {done?(
                       <Pill tone={done.overallScore>=4?"good":"bad"}>
-                        {done.overallScore>=4?"✓ OK":"⚠ Ação"}
+                        {done.overallScore>=4?"Adequado":"Requer atenção"}
                       </Pill>
                     ):(
-                      <span style={{fontSize:12,color:FAINT,fontWeight:600}}>Iniciar →</span>
+                      <button style={{border:"none",background:BLUE,color:"#fff",borderRadius:16,padding:"12px 14px",fontSize:13,fontWeight:900,cursor:"pointer",boxShadow:"0 10px 18px rgba(31,78,121,.18)"}}>Auditar</button>
                     )}
                   </div>
                 </div>
@@ -737,14 +828,15 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
         <div style={{display:"flex",gap:8,marginTop:4}}>
           <button onClick={onHistory}
             style={{flex:1,padding:"14px 12px",minHeight:48,borderRadius:16,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:13,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>
-            Histórico
+            Áreas
           </button>
           <button onClick={onDashboard} className="btn-scale"
             style={{flex:2,padding:"14px 12px",minHeight:50,borderRadius:16,border:"none",background:INK,color:"#fff",fontSize:14,fontWeight:900,fontFamily:"inherit",cursor:"pointer",letterSpacing:"0.01em",boxShadow:"0 14px 28px rgba(15,23,42,.22)"}}>
-            Dashboard →
+            Indicadores
           </button>
         </div>
       </div>
+      <BottomNav active="Auditoria" onAudit={()=>{}} onAreas={onHistory} onIndicadores={onDashboard}/>
     </div>
   );
 }
@@ -758,6 +850,9 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
   const allDone=scored===area.items.length;
   const isLast=areaIdx===activeAreas.length-1;
   const prevScores=activeAreas.slice(0,areaIdx).map(a=>{const it=audit.areas[a.id].items.filter(s=>s!==null);return it.length?avg(it):null;});
+  const areaScore=scored?avg(aData.items.filter(s=>s!==null)):null;
+  const areaStatus=areaScore===null?"Pendente":areaScore>=4?"Adequado":areaScore>=2?"Requer atenção":"Crítico";
+  const areaTone=areaScore===null?"neutral":areaScore>=4?"good":areaScore>=2?"warn":"bad";
 
   return(
     <div className="au" style={{paddingBottom:104}}>
@@ -785,6 +880,16 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
           )}
         </div>
         {/* Step progress */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"center",marginBottom:12}}>
+          <div style={{background:SOFT_BLUE,border:"1px solid #C9DCEB",borderRadius:20,padding:"12px 13px"}}>
+            <p style={{fontSize:12,fontWeight:800,color:BLUE,lineHeight:1.2,marginBottom:4}}>Área em auditoria</p>
+            <p style={{fontSize:16,fontWeight:900,color:INK,letterSpacing:"-0.02em",lineHeight:1.2}}>{area.short}</p>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <Pill tone={areaTone}>{areaStatus}</Pill>
+            <p style={{fontSize:22,fontWeight:900,color:areaScore===null?FAINT:scoreColor(areaScore).tx,letterSpacing:"-0.04em",lineHeight:1,marginTop:8}}>{areaScore!==null?areaScore.toFixed(1):"—"}</p>
+          </div>
+        </div>
         <div style={{display:"flex",gap:4}}>
           {activeAreas.map((_,i)=>(
             <div key={i} style={{flex:1,height:5,borderRadius:99,
@@ -792,7 +897,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
               transition:"background .2s"}}/>
           ))}
         </div>
-        <p style={{fontSize:11.5,color:FAINT,fontWeight:500,marginTop:6,lineHeight:1.3}}>{scored} de {area.items.length} itens pontuados</p>
+        <p style={{fontSize:13,color:MUTED,fontWeight:700,marginTop:8,lineHeight:1.35}}>{scored} de {area.items.length} itens pontuados</p>
       </div>
 
       {/* Items */}
@@ -807,8 +912,8 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
               <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:12}}>
                 <StateIcon state={state}/>
                 <div style={{flex:1}}>
-                  <p style={{fontSize:14.5,fontWeight:800,color:s!==null?c.tx:INK,lineHeight:1.38,letterSpacing:"-0.01em"}}>{item}</p>
-                  <p style={{fontSize:12,color:s!==null?c.tx:MUTED,lineHeight:1.55,marginTop:5,opacity:s!==null?.78:1}}>{padrao}</p>
+                  <p style={{fontSize:16,fontWeight:900,color:s!==null?c.tx:INK,lineHeight:1.32,letterSpacing:"-0.02em"}}>{item}</p>
+                  <p style={{fontSize:14,color:s!==null?c.tx:MUTED,lineHeight:1.55,marginTop:6,opacity:s!==null?.78:1}}>{padrao}</p>
                 </div>
                 {s!==null&&<span style={{fontSize:11,fontWeight:700,padding:"3px 9px",borderRadius:99,background:`${c.tx}18`,color:c.tx,flexShrink:0,lineHeight:1.2}}>{SC[s].lbl}</span>}
               </div>
@@ -819,7 +924,7 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
 
         {/* Notes + photo */}
         <Card pad="15px" radius={24}>
-          <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>Observações</p>
+          <p style={{fontSize:13,fontWeight:800,color:BLUE,marginBottom:8}}>Observações e evidências</p>
           <textarea value={aData.notes} onChange={e=>onNotes(area.id,e.target.value)}
             placeholder="Não conformidades específicas, responsável, detalhes…" rows={2}
             style={{width:"100%",fontSize:14,lineHeight:1.6,padding:"12px 13px",border:`1.5px solid ${RING}`,borderRadius:16,background:SHEET,color:INK,resize:"none"}}/>
@@ -891,6 +996,16 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
               <p style={{fontSize:14,color:"rgba(255,255,255,.55)",marginTop:5,lineHeight:1.35}}>{passed?"✓ Meta de 4,0 cumprida":"⚠ Ação necessária"}</p>
             </div>
             <ScoreRing score={overallScore} size={96}/>
+          </div>
+          <div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+            <div style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.12)",borderRadius:18,padding:"12px"}}>
+              <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.58)",lineHeight:1.25}}>Registro</p>
+              <p style={{fontSize:16,fontWeight:900,color:"#fff",lineHeight:1.25,marginTop:4}}>Auditoria concluída</p>
+            </div>
+            <div style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.12)",borderRadius:18,padding:"12px"}}>
+              <p style={{fontSize:12,fontWeight:800,color:"rgba(255,255,255,.58)",lineHeight:1.25}}>Persistência</p>
+              <p style={{fontSize:16,fontWeight:900,color:"#fff",lineHeight:1.25,marginTop:4}}>{SHEETS_ON?"Planilha ativa":"Modo local"}</p>
+            </div>
           </div>
         </div>
       </DarkCard>
@@ -965,8 +1080,8 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
         )}
 
         <div style={{display:"flex",gap:8}}>
-          <button onClick={onHome} style={{flex:1,padding:"14px",minHeight:48,borderRadius:16,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:14,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>Início</button>
-          <button onClick={onNewAudit} className="btn-scale" style={{flex:1,padding:"14px",minHeight:48,borderRadius:16,border:"none",background:INK,color:"#fff",fontSize:14,fontWeight:900,fontFamily:"inherit",cursor:"pointer",boxShadow:"0 14px 28px rgba(15,23,42,.2)"}}>Nova auditoria →</button>
+          <button onClick={onHome} style={{flex:1,padding:"15px",minHeight:52,borderRadius:18,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:16,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>Início</button>
+          <button onClick={onNewAudit} className="btn-scale" style={{flex:1,padding:"15px",minHeight:52,borderRadius:18,border:"none",background:BLUE,color:"#fff",fontSize:16,fontWeight:900,fontFamily:"inherit",cursor:"pointer",boxShadow:"0 14px 28px rgba(31,78,121,.22)"}}>Nova auditoria</button>
         </div>
       </div>
     </div>
@@ -974,7 +1089,7 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
 }
 
 // ─── Tela: Dashboard ──────────────────────────────────────────────────────────
-function DashboardScreen({onBack,history}){
+function DashboardScreen({onBack,onAreas,history}){
   const today=todaySP();const weekStart=startOfWeek(today);
   const todayA=history.filter(a=>a.date===today);
   const weekA=history.filter(a=>a.date>=weekStart);
@@ -1004,8 +1119,8 @@ function DashboardScreen({onBack,history}){
       <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 22px rgba(15,23,42,.04)"}}>
         <button onClick={onBack} style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
         <div style={{flex:1}}>
-          <p style={{fontSize:16,fontWeight:900,color:INK,letterSpacing:"-0.02em"}}>Dashboard</p>
-          <p style={{fontSize:12,color:FAINT,lineHeight:1.35,marginTop:2}}>{SHEETS_ON?"Sincronizado com Google Sheets":"Dados locais neste dispositivo"}</p>
+          <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em"}}>Indicadores de Facilities</p>
+          <p style={{fontSize:12,color:FAINT,lineHeight:1.35,marginTop:2}}>{SHEETS_ON?"Sincronizado com Planilha Google":"Dados locais neste dispositivo"}</p>
         </div>
       </div>
 
@@ -1043,6 +1158,13 @@ function DashboardScreen({onBack,history}){
           </DarkCard>
         )}
 
+        {!trendData.some(d=>d.count>0)&&history.length>0&&(
+          <Card radius={24} style={{textAlign:"center",padding:"1.6rem 1rem"}}>
+            <p style={{fontSize:17,fontWeight:900,color:INK,letterSpacing:"-0.02em",marginBottom:6}}>Indicadores em formação</p>
+            <p style={{fontSize:14,color:MUTED,lineHeight:1.5}}>Continue registrando auditorias para consolidar tendência semanal.</p>
+          </Card>
+        )}
+
         {/* Below standard areas */}
         {belowAreas.length>0&&(
           <>
@@ -1061,29 +1183,33 @@ function DashboardScreen({onBack,history}){
         )}
 
         {history.length===0&&(
-          <div style={{textAlign:"center",padding:"2.5rem 1rem"}}>
-            <p style={{fontSize:15,fontWeight:700,color:INK,marginBottom:6}}>Nenhuma auditoria ainda.</p>
-            <p style={{fontSize:13,color:MUTED,lineHeight:1.45}}>Faça a primeira auditoria para ver os dados aqui.</p>
-          </div>
+          <Card radius={26} style={{textAlign:"center",padding:"2.2rem 1.2rem"}}>
+            <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",marginBottom:8}}>Nenhuma auditoria registrada</p>
+            <p style={{fontSize:15,color:MUTED,lineHeight:1.5}}>Faça a primeira rodada para ativar os indicadores operacionais.</p>
+          </Card>
         )}
       </div>
+      <BottomNav active="Indicadores" onAudit={onBack} onAreas={onAreas} onIndicadores={()=>{}}/>
     </div>
   );
 }
 
 // ─── Tela: Histórico ──────────────────────────────────────────────────────────
-function HistoryScreen({history,onBack,onView}){
+function HistoryScreen({history,onBack,onDashboard,onView}){
   const sorted=[...history].sort((a,b)=>b.timestamp-a.timestamp).slice(0,80);
   const grouped=sorted.reduce((acc,a)=>{if(!acc[a.date])acc[a.date]=[];acc[a.date].push(a);return acc;},{});
   return(
     <div className="au">
       <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 22px rgba(15,23,42,.04)"}}>
         <button onClick={onBack} style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
-        <p style={{fontSize:16,fontWeight:900,color:INK,letterSpacing:"-0.02em",flex:1}}>Histórico</p>
+        <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",flex:1}}>Áreas auditadas</p>
         <span style={{fontSize:12,color:FAINT}}>{sorted.length} auditorias</span>
       </div>
       {sorted.length===0
-        ?<div style={{padding:"3rem",textAlign:"center",color:FAINT,fontSize:14,lineHeight:1.45}}>Nenhuma auditoria registrada.</div>
+        ?<Card radius={26} style={{margin:"1rem",padding:"2.2rem 1.2rem",textAlign:"center"}}>
+          <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",marginBottom:8}}>Nenhuma área auditada</p>
+          <p style={{fontSize:15,color:MUTED,lineHeight:1.5}}>As rodadas concluídas aparecerão aqui para revisão.</p>
+        </Card>
         :(
           <div style={{padding:"0.9rem 1rem"}}>
             {Object.entries(grouped).map(([date,audits])=>(
@@ -1106,7 +1232,7 @@ function HistoryScreen({history,onBack,onView}){
                               <p style={{fontSize:14,fontWeight:700,color:INK,marginBottom:2,lineHeight:1.3}}>{slot?.time} · {slot?.label}</p>
                               <p style={{fontSize:12,color:MUTED,lineHeight:1.35}}>{a.auditor}</p>
                             </div>
-                            <Pill tone={a.overallScore>=4?"good":"bad"}>{a.overallScore>=4?"OK":"⚠"}</Pill>
+                            <Pill tone={a.overallScore>=4?"good":"bad"}>{a.overallScore>=4?"Adequado":"Ação"}</Pill>
                           </div>
                         </div>
                       </Card>
@@ -1117,6 +1243,7 @@ function HistoryScreen({history,onBack,onView}){
             ))}
           </div>
         )}
+      <BottomNav active="Áreas" onAudit={onBack} onAreas={()=>{}} onIndicadores={onDashboard}/>
     </div>
   );
 }
@@ -1171,8 +1298,8 @@ export default function EspacosApp(){
           onPrev={()=>areaIdx===0?setScreen("home"):setAreaIdx(i=>i-1)}
           onDone={completeAudit}/>}
         {screen==="summary" &&viewData&&<SummaryScreen auditData={viewData} onHome={()=>setScreen("home")} onNewAudit={()=>setScreen("home")}/>}
-        {screen==="dashboard"&&<DashboardScreen onBack={()=>setScreen("home")} history={history}/>}
-        {screen==="history" &&<HistoryScreen history={history} onBack={()=>setScreen("home")} onView={a=>{setViewData(a);setScreen("summary");}}/>}
+        {screen==="dashboard"&&<DashboardScreen onBack={()=>setScreen("home")} onAreas={()=>setScreen("history")} history={history}/>}
+        {screen==="history" &&<HistoryScreen history={history} onBack={()=>setScreen("home")} onDashboard={()=>setScreen("dashboard")} onView={a=>{setViewData(a);setScreen("summary");}}/>}
       </div>
     </>
   );
