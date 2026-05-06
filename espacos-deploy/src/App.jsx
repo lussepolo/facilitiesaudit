@@ -19,6 +19,7 @@ const CSS = `
     color:#0F172A;
     max-width:430px;
     margin:0 auto;
+    box-shadow:0 0 0 1px rgba(15,23,42,.04), 0 24px 70px rgba(15,23,42,.12);
   }
   @keyframes fadeUp {
     from { opacity:0; transform:translateY(10px); }
@@ -27,18 +28,19 @@ const CSS = `
   .au { animation:fadeUp .3s ease both; }
   .tap { cursor:pointer; transition:opacity .12s; }
   .tap:active { opacity:.7; }
-  .btn-scale { transition:transform .1s; cursor:pointer; }
+  .btn-scale { transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease; cursor:pointer; }
   .btn-scale:active { transform:scale(.97); }
   .score-btn {
-    width:40px; height:40px; border-radius:50%; border:1.5px solid;
-    font-size:14px; font-weight:800;
+    width:44px; height:44px; border-radius:50%; border:1.5px solid;
+    font-size:15px; font-weight:800;
     font-family:'DM Sans',system-ui,sans-serif;
     cursor:pointer; display:flex; align-items:center; justify-content:center;
-    transition:transform .1s;
+    box-shadow:0 1px 0 rgba(15,23,42,.04);
+    transition:transform .1s, box-shadow .12s, border-color .12s, background .12s;
     flex-shrink:0;
   }
   .score-btn:active { transform:scale(.84); }
-  textarea, input { font-family:'DM Sans',system-ui,sans-serif; outline:none; }
+  textarea, input, button { font-family:'DM Sans',system-ui,sans-serif; outline:none; }
   textarea:focus, input:focus {
     border-color:#F5C200 !important;
     box-shadow:0 0 0 3px rgba(245,194,0,.18) !important;
@@ -56,6 +58,8 @@ const SHEET = "#F8FAFC"; // slate-50
 const RING  = "#E2E8F0"; // slate-200
 const BG    = "#EEF1F6";
 const YELLOW= "#F5C200";
+const SHADOW="0 14px 34px rgba(15,23,42,.08)";
+const SOFT_SHADOW="0 8px 22px rgba(15,23,42,.06)";
 
 const SC={
   0:{bg:"#FEE2E2",br:"#FCA5A5",tx:"#7F1D1D",lbl:"Crítico"},
@@ -440,22 +444,21 @@ const lhLoad=()=>{try{return JSON.parse(localStorage.getItem(LH_KEY)||"[]");}cat
 const lhSave=h=>{try{localStorage.setItem(LH_KEY,JSON.stringify(h.slice(0,200)));}catch{}};
 
 async function saveToSheets(entry){
-  if(!SHEETS_ON)return;
+  if(!SHEETS_ON)return false;
   const slot=SLOTS.find(s=>s.id===entry.slotId);
   const audited=slot?areasForSlot(slot):AREAS;
-  try{
-    const rows=audited.map(a=>({
-      id:entry.id,campus:"SP",date:entry.date,slot_id:entry.slotId,slot_label:entry.slotLabel,
-      auditor:entry.auditor,area_id:a.id,area_label:a.label,
-      room_number:entry.areas[a.id]?.roomNumber||"",
-      area_score:(()=>{const it=(entry.areas[a.id]?.items||[]).filter(s=>s!==null);return it.length?parseFloat(avg(it).toFixed(2)):null;})(),
-      overall_score:parseFloat(entry.overallScore.toFixed(2)),
-      notes:entry.areas[a.id]?.notes||"",
-      photo_data:entry.areas[a.id]?.photo||null,
-      created_at:new Date().toISOString(),
-    }));
-    await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows})});
-  }catch{qAdd(entry);}
+  const rows=audited.map(a=>({
+    id:entry.id,campus:"SP",date:entry.date,slot_id:entry.slotId,slot_label:entry.slotLabel,
+    auditor:entry.auditor,area_id:a.id,area_label:a.label,
+    room_number:entry.areas[a.id]?.roomNumber||"",
+    area_score:(()=>{const it=(entry.areas[a.id]?.items||[]).filter(s=>s!==null);return it.length?parseFloat(avg(it).toFixed(2)):null;})(),
+    overall_score:parseFloat(entry.overallScore.toFixed(2)),
+    notes:entry.areas[a.id]?.notes||"",
+    photo_data:entry.areas[a.id]?.photo||null,
+    created_at:new Date().toISOString(),
+  }));
+  await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows})});
+  return true;
 }
 
 async function syncQueue(){
@@ -479,7 +482,7 @@ function Pill({children, tone="neutral"}){
     yellow: {bg:YELLOW,color:INK,border:YELLOW},
   }[tone]||{bg:SHEET,color:MUTED,border:RING};
   return(
-    <span style={{display:"inline-flex",alignItems:"center",padding:"3px 10px",borderRadius:99,border:`1px solid ${t.border}`,background:t.bg,color:t.color,fontSize:11,fontWeight:700,letterSpacing:"0.02em"}}>
+    <span style={{display:"inline-flex",alignItems:"center",padding:"5px 12px",borderRadius:99,border:`1px solid ${t.border}`,background:t.bg,color:t.color,fontSize:12,fontWeight:900,letterSpacing:"0.01em",lineHeight:1.2,boxShadow:"0 1px 2px rgba(15,23,42,.05)"}}>
       {children}
     </span>
   );
@@ -493,14 +496,14 @@ function ScoreRing({score,size=100}){
   return(
     <div style={{position:"relative",width:size,height:size,display:"grid",placeItems:"center"}}>
       <svg width={size} height={size} viewBox="0 0 100 100" style={{transform:"rotate(-90deg)"}} aria-hidden="true">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="10"/>
-        <circle cx="50" cy="50" r={r} fill="none" stroke="white" strokeWidth="10"
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,.16)" strokeWidth="10"/>
+        <circle cx="50" cy="50" r={r} fill="none" stroke={col} strokeWidth="10"
           strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
           style={{transition:"stroke-dashoffset .5s ease"}}/>
       </svg>
       <div style={{position:"absolute",textAlign:"center",color:"#fff"}}>
         <div style={{fontSize:size>90?28:20,fontWeight:900,letterSpacing:"-0.04em",lineHeight:1}}>{score.toFixed(1)}</div>
-        <div style={{fontSize:8,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",opacity:.55,marginTop:2}}>nota</div>
+        <div style={{fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",opacity:.55,marginTop:2}}>nota</div>
       </div>
     </div>
   );
@@ -515,7 +518,7 @@ function StateIcon({state}){
     none:{bg:SHEET,    color:FAINT,    symbol:"·"},
   }[state]||{bg:SHEET,color:FAINT,symbol:"·"};
   return(
-    <div style={{width:36,height:36,borderRadius:10,background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14,fontWeight:900,color:cfg.color}}>
+    <div style={{width:38,height:38,borderRadius:12,background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:15,fontWeight:900,color:cfg.color,border:`1px solid ${cfg.color}20`}}>
       {cfg.symbol}
     </div>
   );
@@ -524,11 +527,11 @@ function StateIcon({state}){
 // Score buttons row
 function ScoreRow({value,onChange}){
   return(
-    <div style={{display:"flex",gap:5,justifyContent:"space-between"}}>
+    <div style={{display:"flex",gap:6,justifyContent:"space-between"}}>
       {[0,1,2,3,4,5].map(s=>{
         const c=SC[s];const on=value===s;
         return <button key={s} className="score-btn" onClick={()=>onChange(s)}
-          style={{background:on?c.bg:"transparent",borderColor:on?c.br:RING,color:on?c.tx:FAINT,fontWeight:900}}>{s}</button>;
+          style={{background:on?c.bg:PAPER,borderColor:on?c.tx:RING,color:on?c.tx:FAINT,fontWeight:900,boxShadow:on?`0 0 0 3px ${c.br}66, 0 8px 18px ${c.br}55`:"0 1px 0 rgba(15,23,42,.04)",transform:on?"translateY(-1px)":"none"}}>{s}</button>;
       })}
     </div>
   );
@@ -549,9 +552,9 @@ function PhotoCapture({photo,onPhoto,color}){
           <img src={photo} onClick={()=>ref.current.click()} alt="foto"
             style={{width:56,height:56,borderRadius:12,objectFit:"cover",border:`2px solid ${color}`,cursor:"pointer"}}/>
           <div>
-            <p style={{fontSize:11,fontWeight:700,color,marginBottom:3}}>Foto anexada</p>
+            <p style={{fontSize:12,fontWeight:700,color,marginBottom:3}}>Foto anexada</p>
             <button onClick={()=>ref.current.click()}
-              style={{fontSize:10,color:MUTED,background:SHEET,border:`1px solid ${RING}`,borderRadius:8,padding:"2px 10px",fontFamily:"inherit",cursor:"pointer"}}>
+              style={{fontSize:12,color:MUTED,background:SHEET,border:`1px solid ${RING}`,borderRadius:8,padding:"6px 12px",minHeight:34,fontFamily:"inherit",cursor:"pointer"}}>
               Trocar
             </button>
           </div>
@@ -560,7 +563,7 @@ function PhotoCapture({photo,onPhoto,color}){
         <button onClick={()=>ref.current.click()}
           style={{display:"flex",alignItems:"center",gap:8,padding:"9px 16px",borderRadius:12,
             border:`1.5px dashed ${RING}`,background:"transparent",color:MUTED,
-            fontSize:12,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>
+            fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer",minHeight:44}}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
             <circle cx="12" cy="13" r="4"/>
@@ -573,18 +576,18 @@ function PhotoCapture({photo,onPhoto,color}){
 }
 
 // Card wrapper
-function Card({children, pad="1.1rem 1.25rem", radius=20, style={}, onClick}){
+function Card({children, pad="1.1rem 1.25rem", radius=24, style={}, onClick}){
   return(
-    <div onClick={onClick} style={{background:PAPER,borderRadius:radius,padding:pad,boxShadow:"0 1px 3px rgba(15,23,42,.06)",border:`1px solid ${RING}`,...style}}>
+    <div onClick={onClick} style={{background:PAPER,borderRadius:radius,padding:pad,boxShadow:SOFT_SHADOW,border:`1px solid rgba(226,232,240,.95)`,...style}}>
       {children}
     </div>
   );
 }
 
 // Dark card
-function DarkCard({children, pad="1.25rem", radius=24, style={}}){
+function DarkCard({children, pad="1.25rem", radius=26, style={}}){
   return(
-    <div style={{background:INK,borderRadius:radius,padding:pad,...style}}>
+    <div style={{background:INK,borderRadius:radius,padding:pad,boxShadow:"0 18px 42px rgba(15,23,42,.22)",border:"1px solid rgba(255,255,255,.08)",...style}}>
       {children}
     </div>
   );
@@ -594,19 +597,19 @@ function DarkCard({children, pad="1.25rem", radius=24, style={}}){
 function NameScreen({onSet}){
   const[name,setName]=useState(()=>localStorage.getItem("ec_auditor")||"");
   return(
-    <div className="au" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:"2rem"}}>
+    <div className="au" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:"2rem 1.25rem"}}>
       <div style={{marginBottom:"1.75rem",textAlign:"center"}}>
-        <div style={{width:48,height:48,borderRadius:14,background:YELLOW,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1.25rem"}}>
-          <span style={{fontSize:14,fontWeight:900,color:INK,letterSpacing:"-0.03em"}}>EC</span>
+        <div style={{width:58,height:58,borderRadius:18,background:YELLOW,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1.25rem",boxShadow:"0 14px 28px rgba(245,194,0,.28)"}}>
+          <span style={{fontSize:16,fontWeight:900,color:INK,letterSpacing:"-0.03em"}}>EC</span>
         </div>
-        <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 14px",borderRadius:99,background:INK,marginBottom:16}}>
-          <span style={{fontSize:10,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:"0.15em"}}>Auditoria de Espaços</span>
+        <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 15px",borderRadius:99,background:INK,marginBottom:16,boxShadow:"0 10px 24px rgba(15,23,42,.16)"}}>
+          <span style={{fontSize:11,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:"0.15em"}}>Auditoria de Espaços</span>
         </div>
-        <h1 style={{fontSize:34,fontWeight:900,color:INK,letterSpacing:"-0.05em",lineHeight:1.1,marginBottom:8}}>Escola Concept<br/>São Paulo</h1>
-        <p style={{fontSize:13,color:MUTED,lineHeight:1.6}}>Qualidade operacional · Ciclo 2026</p>
+        <h1 style={{fontSize:36,fontWeight:900,color:INK,letterSpacing:"-0.05em",lineHeight:1.05,marginBottom:10}}>Escola Concept<br/>São Paulo</h1>
+        <p style={{fontSize:15,color:MUTED,lineHeight:1.55}}>Qualidade operacional · Ciclo 2026</p>
       </div>
-      <div style={{width:"100%",maxWidth:320}}>
-        <p style={{fontSize:10,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Seu nome</p>
+      <div style={{width:"100%",maxWidth:340,background:PAPER,border:`1px solid ${RING}`,borderRadius:26,padding:"1rem",boxShadow:SHADOW}}>
+        <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Seu nome</p>
         <input value={name} onChange={e=>setName(e.target.value)}
           onKeyDown={e=>e.key==="Enter"&&name.trim()&&onSet(name.trim())}
           placeholder="ex: Ana Lima"
@@ -614,14 +617,14 @@ function NameScreen({onSet}){
         <button onClick={()=>name.trim()&&onSet(name.trim())} className="btn-scale"
           disabled={!name.trim()}
           style={{width:"100%",padding:"15px",borderRadius:14,border:"none",fontFamily:"inherit",
-            fontSize:14,fontWeight:900,letterSpacing:"0.01em",
+            fontSize:15,fontWeight:900,letterSpacing:"0.01em",minHeight:50,boxShadow:name.trim()?"0 12px 24px rgba(15,23,42,.18)":"none",
             background:name.trim()?INK:"#E2E8F0",
             color:name.trim()?"#fff":FAINT,cursor:name.trim()?"pointer":"default"}}>
           Entrar →
         </button>
         {!SHEETS_ON&&(
-          <p style={{marginTop:12,fontSize:11,color:FAINT,textAlign:"center",lineHeight:1.6}}>
-            Dados salvos neste dispositivo.<br/>Configure SHEETS_URL para persistir na planilha.
+          <p style={{marginTop:12,fontSize:12,color:FAINT,textAlign:"center",lineHeight:1.65}}>
+            Dados salvos neste dispositivo.<br/>Configure VITE_SHEETS_URL para persistir na planilha.
           </p>
         )}
       </div>
@@ -638,51 +641,51 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
   return(
     <div className="au">
       {/* Nav */}
-      <div style={{padding:"1rem 1rem 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{padding:"1.1rem 1rem 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:32,height:32,borderRadius:9,background:YELLOW,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <span style={{fontSize:11,fontWeight:900,color:INK}}>EC</span>
+          <div style={{width:40,height:40,borderRadius:13,background:YELLOW,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 8px 18px rgba(245,194,0,.24)"}}>
+            <span style={{fontSize:12,fontWeight:900,color:INK}}>EC</span>
           </div>
           <div>
-            <p style={{fontSize:10,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",lineHeight:1}}>Qualidade dos Espaços</p>
-            <p style={{fontSize:11,fontWeight:600,color:INK,lineHeight:1.3}}>{fmtDate(date)}</p>
+            <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",lineHeight:1.15}}>Qualidade dos Espaços</p>
+            <p style={{fontSize:12,fontWeight:600,color:INK,lineHeight:1.35,marginTop:2}}>{fmtDate(date)}</p>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {pending>0&&<Pill tone="warn">{pending} offline</Pill>}
-          <span style={{fontSize:11,fontWeight:600,color:MUTED}}>{auditor}</span>
+          <span style={{fontSize:12,fontWeight:600,color:MUTED}}>{auditor}</span>
         </div>
       </div>
 
-      <div style={{padding:"0.75rem 1rem",display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{padding:"0.85rem 1rem 1rem",display:"flex",flexDirection:"column",gap:12}}>
         {/* Hero dark card */}
-        <DarkCard>
+        <DarkCard pad="1.35rem" radius={28} style={{background:INK}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
             <div>
-              <p style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.18em",marginBottom:6}}>Hoje</p>
-              <p style={{fontSize:42,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:1}}>
+              <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.18em",marginBottom:6}}>Hoje</p>
+              <p style={{fontSize:46,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:.95}}>
                 {dayAvg?dayAvg.toFixed(1):"—"}
               </p>
-              <p style={{fontSize:12,color:"rgba(255,255,255,.5)",marginTop:4}}>Média do dia</p>
+              <p style={{fontSize:13,color:"rgba(255,255,255,.5)",marginTop:4}}>Média do dia</p>
             </div>
             {dayAvg&&<ScoreRing score={dayAvg} size={88}/>}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:9}}>
             {[
               [`${dayAudits.length}/4`,"realizadas"],
               [alerts||"0","alertas"],
               [SHEETS_ON?"✓":"—",SHEETS_ON?"Sheets":"local"],
             ].map(([v,l])=>(
-              <div key={l} style={{background:"rgba(255,255,255,.08)",borderRadius:12,padding:"10px 10px 8px",textAlign:"center"}}>
+              <div key={l} style={{background:"rgba(255,255,255,.09)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:"11px 8px 9px",textAlign:"center"}}>
                 <p style={{fontSize:18,fontWeight:900,color:"#fff",lineHeight:1}}>{v}</p>
-                <p style={{fontSize:9,color:"rgba(255,255,255,.4)",marginTop:3,textTransform:"uppercase",letterSpacing:"0.08em"}}>{l}</p>
+                <p style={{fontSize:10.5,color:"rgba(255,255,255,.4)",marginTop:4,textTransform:"uppercase",letterSpacing:"0.08em",lineHeight:1.2}}>{l}</p>
               </div>
             ))}
           </div>
         </DarkCard>
 
         {/* Slots */}
-        <p style={{fontSize:9,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginTop:4}}>
+        <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginTop:4}}>
           Horários de auditoria
         </p>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -691,28 +694,28 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
             const sc_=done?scoreColor(done.overallScore):null;
             const areaCount=areasForSlot(slot).length;
             return(
-              <Card key={slot.id} pad="0" radius={20}
-                style={{overflow:"hidden",cursor:"pointer"}}
+              <Card key={slot.id} pad="0" radius={24}
+                style={{overflow:"hidden",cursor:"pointer",border:`1px solid ${done?sc_.br:RING}`,boxShadow:done?"0 12px 30px rgba(15,23,42,.08)":SOFT_SHADOW}}
                 onClick={()=>done?onView(done):onStart(slot)}>
                 <div className="tap" style={{display:"flex",alignItems:"center",gap:0}}>
                   {/* Left color bar */}
-                  <div style={{width:5,alignSelf:"stretch",background:done?(done.overallScore>=4?"#10B981":done.overallScore>=3?"#F59E0B":"#F43F5E"):"#E2E8F0",borderRadius:"20px 0 0 20px",flexShrink:0}}/>
-                  <div style={{display:"flex",alignItems:"center",gap:12,flex:1,padding:"14px 14px 14px 12px"}}>
+                  <div style={{width:6,alignSelf:"stretch",background:done?(done.overallScore>=4?"#10B981":done.overallScore>=3?"#F59E0B":"#F43F5E"):"#CBD5E1",borderRadius:"24px 0 0 24px",flexShrink:0}}/>
+                  <div style={{display:"flex",alignItems:"center",gap:13,flex:1,padding:"15px 15px 15px 13px"}}>
                     {/* Score badge */}
-                    <div style={{width:48,height:48,borderRadius:14,flexShrink:0,
+                    <div style={{width:52,height:52,borderRadius:16,flexShrink:0,
                       background:done?sc_.bg:SHEET,border:`1.5px solid ${done?sc_.br:RING}`,
-                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",boxShadow:done?"0 6px 16px rgba(15,23,42,.06)":"none"}}>
                       {done?(
                         <><span style={{fontSize:16,fontWeight:900,color:sc_.tx,lineHeight:1}}>{done.overallScore.toFixed(1)}</span>
-                        <span style={{fontSize:7,color:sc_.tx,opacity:.6}}>/5</span></>
+                        <span style={{fontSize:10.5,color:sc_.tx,opacity:.6}}>/5</span></>
                       ):(
                         <span style={{fontSize:12,color:FAINT,fontWeight:700}}>—</span>
                       )}
                     </div>
                     <div style={{flex:1}}>
-                      <p style={{fontSize:17,fontWeight:900,color:INK,letterSpacing:"-0.02em",marginBottom:2}}>{slot.time}</p>
-                      <p style={{fontSize:11,color:MUTED}}>{slot.label}</p>
-                      <p style={{fontSize:9,color:FAINT,marginTop:2}}>
+                      <p style={{fontSize:19,fontWeight:900,color:INK,letterSpacing:"-0.03em",marginBottom:2}}>{slot.time}</p>
+                      <p style={{fontSize:12.5,color:MUTED,lineHeight:1.35}}>{slot.label}</p>
+                      <p style={{fontSize:11,color:FAINT,marginTop:3,lineHeight:1.3}}>
                         {!slot.classroomsIncluded?"Salas excluídas · ":""}{areaCount} áreas
                       </p>
                     </div>
@@ -721,7 +724,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
                         {done.overallScore>=4?"✓ OK":"⚠ Ação"}
                       </Pill>
                     ):(
-                      <span style={{fontSize:11,color:FAINT,fontWeight:600}}>Iniciar →</span>
+                      <span style={{fontSize:12,color:FAINT,fontWeight:600}}>Iniciar →</span>
                     )}
                   </div>
                 </div>
@@ -733,11 +736,11 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
         {/* Nav buttons */}
         <div style={{display:"flex",gap:8,marginTop:4}}>
           <button onClick={onHistory}
-            style={{flex:1,padding:"12px",borderRadius:14,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:12,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>
+            style={{flex:1,padding:"14px 12px",minHeight:48,borderRadius:16,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:13,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>
             Histórico
           </button>
           <button onClick={onDashboard} className="btn-scale"
-            style={{flex:2,padding:"12px",borderRadius:14,border:"none",background:INK,color:"#fff",fontSize:12,fontWeight:900,fontFamily:"inherit",cursor:"pointer",letterSpacing:"0.01em"}}>
+            style={{flex:2,padding:"14px 12px",minHeight:50,borderRadius:16,border:"none",background:INK,color:"#fff",fontSize:14,fontWeight:900,fontFamily:"inherit",cursor:"pointer",letterSpacing:"0.01em",boxShadow:"0 14px 28px rgba(15,23,42,.22)"}}>
             Dashboard →
           </button>
         </div>
@@ -757,57 +760,57 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
   const prevScores=activeAreas.slice(0,areaIdx).map(a=>{const it=audit.areas[a.id].items.filter(s=>s!==null);return it.length?avg(it):null;});
 
   return(
-    <div className="au" style={{paddingBottom:96}}>
+    <div className="au" style={{paddingBottom:104}}>
       {/* Header */}
-      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.85rem 1rem"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.95rem 1rem 0.85rem",boxShadow:"0 8px 22px rgba(15,23,42,.04)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
           <button onClick={onPrev}
-            style={{width:32,height:32,borderRadius:10,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:14,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>
             ←
           </button>
           <div style={{flex:1,minWidth:0}}>
-            <p style={{fontSize:9,color:FAINT,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>
+            <p style={{fontSize:11,color:FAINT,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3,lineHeight:1.25}}>
               {slot.time} {slot.label} · {areaIdx+1} de {activeAreas.length}
             </p>
-            <p style={{fontSize:15,fontWeight:900,color:INK,letterSpacing:"-0.02em",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{area.label}</p>
+            <p style={{fontSize:17,fontWeight:900,color:INK,letterSpacing:"-0.03em",lineHeight:1.22}}>{area.label}</p>
           </div>
           {/* Room number for classrooms */}
           {area.isClassroom&&(
-            <div style={{background:INK,borderRadius:10,padding:"5px 10px",flexShrink:0}}>
-              <p style={{fontSize:7,color:"rgba(255,255,255,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Sala nº</p>
+            <div style={{background:INK,borderRadius:14,padding:"7px 11px",flexShrink:0,boxShadow:"0 8px 18px rgba(15,23,42,.18)"}}>
+              <p style={{fontSize:10.5,color:"rgba(255,255,255,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Sala nº</p>
               <input value={aData.roomNumber} onChange={e=>onRoomNumber(area.id,e.target.value)}
                 placeholder="201"
-                style={{width:44,background:"transparent",border:"none",color:"#fff",fontSize:13,fontWeight:900,fontFamily:"inherit",padding:0}}/>
+                style={{width:48,background:"transparent",border:"none",color:"#fff",fontSize:14,fontWeight:900,fontFamily:"inherit",padding:0}}/>
             </div>
           )}
         </div>
         {/* Step progress */}
-        <div style={{display:"flex",gap:3}}>
+        <div style={{display:"flex",gap:4}}>
           {activeAreas.map((_,i)=>(
-            <div key={i} style={{flex:1,height:3,borderRadius:2,
+            <div key={i} style={{flex:1,height:5,borderRadius:99,
               background:i<areaIdx?"#10B981":i===areaIdx?area.color:"#E2E8F0",
               transition:"background .2s"}}/>
           ))}
         </div>
-        <p style={{fontSize:9,color:FAINT,fontWeight:500,marginTop:5}}>{scored} de {area.items.length} itens pontuados</p>
+        <p style={{fontSize:11.5,color:FAINT,fontWeight:500,marginTop:6,lineHeight:1.3}}>{scored} de {area.items.length} itens pontuados</p>
       </div>
 
       {/* Items */}
-      <div style={{padding:"0.75rem 1rem",display:"flex",flexDirection:"column",gap:8}}>
+      <div style={{padding:"0.9rem 1rem",display:"flex",flexDirection:"column",gap:11}}>
         {area.items.map(([item,padrao],i)=>{
           const s=aData.items[i];
           const state=itemState(s);
           const c=s!==null?SC[s]:null;
           return(
-            <Card key={i} pad="12px 14px" radius={18}
-              style={{background:s!==null?c.bg:PAPER,border:`1px solid ${s!==null?c.br:RING}`,transition:"background .18s"}}>
-              <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:10}}>
+            <Card key={i} pad="15px 15px" radius={24}
+              style={{background:s!==null?c.bg:PAPER,border:`1px solid ${s!==null?c.br:RING}`,transition:"background .18s, border-color .18s",boxShadow:s!==null?`0 12px 28px ${c.br}33`:SOFT_SHADOW}}>
+              <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:12}}>
                 <StateIcon state={state}/>
                 <div style={{flex:1}}>
-                  <p style={{fontSize:13,fontWeight:700,color:s!==null?c.tx:INK,lineHeight:1.35}}>{item}</p>
-                  <p style={{fontSize:10,color:s!==null?c.tx:MUTED,lineHeight:1.4,marginTop:3,opacity:s!==null?.75:1}}>{padrao}</p>
+                  <p style={{fontSize:14.5,fontWeight:800,color:s!==null?c.tx:INK,lineHeight:1.38,letterSpacing:"-0.01em"}}>{item}</p>
+                  <p style={{fontSize:12,color:s!==null?c.tx:MUTED,lineHeight:1.55,marginTop:5,opacity:s!==null?.78:1}}>{padrao}</p>
                 </div>
-                {s!==null&&<span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:99,background:`${c.tx}18`,color:c.tx,flexShrink:0}}>{SC[s].lbl}</span>}
+                {s!==null&&<span style={{fontSize:11,fontWeight:700,padding:"3px 9px",borderRadius:99,background:`${c.tx}18`,color:c.tx,flexShrink:0,lineHeight:1.2}}>{SC[s].lbl}</span>}
               </div>
               <ScoreRow value={s} onChange={v=>onScore(area.id,i,v)}/>
             </Card>
@@ -815,19 +818,19 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
         })}
 
         {/* Notes + photo */}
-        <Card pad="12px 14px" radius={18}>
-          <p style={{fontSize:9,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>Observações</p>
+        <Card pad="15px" radius={24}>
+          <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>Observações</p>
           <textarea value={aData.notes} onChange={e=>onNotes(area.id,e.target.value)}
             placeholder="Não conformidades específicas, responsável, detalhes…" rows={2}
-            style={{width:"100%",fontSize:13,lineHeight:1.5,padding:"10px 12px",border:`1.5px solid ${RING}`,borderRadius:12,background:SHEET,color:INK,resize:"none"}}/>
+            style={{width:"100%",fontSize:14,lineHeight:1.6,padding:"12px 13px",border:`1.5px solid ${RING}`,borderRadius:16,background:SHEET,color:INK,resize:"none"}}/>
           <PhotoCapture photo={aData.photo} onPhoto={b64=>onPhoto(area.id,b64)} color={area.color}/>
         </Card>
 
         {/* Previous area chips */}
         {areaIdx>0&&(
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
             {activeAreas.slice(0,Math.min(areaIdx,6)).map((a,i)=>{const c=scoreColor(prevScores[i]);return(
-              <span key={a.id} style={{fontSize:9,fontWeight:700,padding:"3px 9px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`}}>
+              <span key={a.id} style={{fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,lineHeight:1.25}}>
                 {a.short}{audit.areas[a.id]?.roomNumber?` #${audit.areas[a.id].roomNumber}`:""}: {prevScores[i]?prevScores[i].toFixed(1):"—"}
               </span>
             );})}
@@ -836,12 +839,12 @@ function AuditScreen({slot,areaIdx,audit,onScore,onNotes,onPhoto,onRoomNumber,on
       </div>
 
       {/* Sticky bottom action bar */}
-      <div style={{position:"sticky",bottom:0,left:0,right:0,background:INK,padding:"12px 1rem",boxShadow:"0 -4px 20px rgba(15,23,42,.25)"}}>
+      <div style={{position:"sticky",bottom:0,left:0,right:0,background:"rgba(15,23,42,.96)",padding:"13px 1rem",boxShadow:"0 -12px 32px rgba(15,23,42,.25)",borderTop:"1px solid rgba(255,255,255,.08)"}}>
         <button className="btn-scale" onClick={isLast?onDone:onNext} disabled={!allDone}
-          style={{width:"100%",padding:"15px",borderRadius:14,border:"none",fontFamily:"inherit",
-            fontSize:14,fontWeight:900,letterSpacing:"0.01em",cursor:allDone?"pointer":"default",
-            background:allDone?PAPER:"rgba(255,255,255,.1)",
-            color:allDone?INK:"rgba(255,255,255,.3)",transition:"background .18s"}}>
+          style={{width:"100%",padding:"15px",borderRadius:18,border:"none",fontFamily:"inherit",
+            fontSize:15,fontWeight:900,letterSpacing:"0.01em",cursor:allDone?"pointer":"default",minHeight:48,
+            background:allDone?YELLOW:"rgba(255,255,255,.1)",
+            color:allDone?INK:"rgba(255,255,255,.35)",transition:"background .18s",boxShadow:allDone?"0 12px 24px rgba(245,194,0,.22)":"none"}}>
           {!allDone
             ?`Pontue ${area.items.length-scored} item${area.items.length-scored>1?"s":""} restante${area.items.length-scored>1?"s":""}…`
             :isLast?"Concluir auditoria →":`Próxima: ${activeAreas[areaIdx+1].short} →`}
@@ -876,41 +879,41 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
       )}
 
       {/* Hero */}
-      <DarkCard radius={0} pad="0" style={{background:passed?"#064E3B":"#7F1D1D"}}>
-        <div style={{padding:"1.25rem 1rem 1.1rem"}}>
-          <p style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>
+      <DarkCard radius={0} pad="0" style={{background:passed?"#064E3B":"#7F1D1D",boxShadow:"0 18px 42px rgba(15,23,42,.22)"}}>
+        <div style={{padding:"1.45rem 1.1rem 1.3rem"}}>
+          <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,lineHeight:1.3}}>
             SP · {slot.time} {slot.label} · {fmtDate(date)}
           </p>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
-              <p style={{fontSize:11,color:"rgba(255,255,255,.5)",marginBottom:4}}>{passed?"Padrão atingido":"Abaixo do padrão mínimo"}</p>
-              <p style={{fontSize:48,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:1}}>{overallScore.toFixed(1)}</p>
-              <p style={{fontSize:13,color:"rgba(255,255,255,.55)",marginTop:4}}>{passed?"✓ Meta de 4,0 cumprida":"⚠ Ação necessária"}</p>
+              <p style={{fontSize:12.5,color:"rgba(255,255,255,.5)",marginBottom:4,lineHeight:1.35}}>{passed?"Padrão atingido":"Abaixo do padrão mínimo"}</p>
+              <p style={{fontSize:54,fontWeight:900,color:"#fff",letterSpacing:"-0.06em",lineHeight:.94}}>{overallScore.toFixed(1)}</p>
+              <p style={{fontSize:14,color:"rgba(255,255,255,.55)",marginTop:5,lineHeight:1.35}}>{passed?"✓ Meta de 4,0 cumprida":"⚠ Ação necessária"}</p>
             </div>
             <ScoreRing score={overallScore} size={96}/>
           </div>
         </div>
       </DarkCard>
 
-      <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:12}}>
         {/* Area scores */}
-        <p style={{fontSize:9,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em"}}>Notas por área</p>
-        <Card pad="0" radius={20} style={{overflow:"hidden"}}>
+        <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em"}}>Notas por área</p>
+        <Card pad="0" radius={24} style={{overflow:"hidden"}}>
           {areaScores.map((a,i)=>{
             const c=scoreColor(a.score);
             return(
               <div key={a.id} style={{display:"flex",alignItems:"center",gap:0,borderBottom:i<areaScores.length-1?`1px solid ${RING}`:"none"}}>
-                <div style={{width:4,alignSelf:"stretch",background:a.color,flexShrink:0}}/>
-                <div style={{display:"flex",alignItems:"center",gap:10,flex:1,padding:"10px 12px"}}>
-                  <span style={{flex:1,fontSize:12,fontWeight:600,color:INK,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                <div style={{width:5,alignSelf:"stretch",background:a.color,flexShrink:0}}/>
+                <div style={{display:"flex",alignItems:"center",gap:11,flex:1,padding:"12px 13px"}}>
+                  <span style={{flex:1,fontSize:13.5,fontWeight:600,color:INK,minWidth:0,lineHeight:1.35}}>
                     {a.short}{a.room?<span style={{color:FAINT,fontWeight:400}}> #{a.room}</span>:null}
                   </span>
                   {a.photo&&(
                     <button onClick={()=>setViewPhoto(a.photo)} style={{background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0}}>
-                      <img src={a.photo} style={{width:28,height:28,borderRadius:7,objectFit:"cover",border:`1px solid ${RING}`}}/>
+                      <img src={a.photo} style={{width:34,height:34,borderRadius:10,objectFit:"cover",border:`1px solid ${RING}`,boxShadow:"0 4px 10px rgba(15,23,42,.08)"}}/>
                     </button>
                   )}
-                  <span style={{fontSize:13,fontWeight:900,padding:"2px 12px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,flexShrink:0}}>
+                  <span style={{fontSize:14,fontWeight:900,padding:"4px 12px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,flexShrink:0,lineHeight:1.2}}>
                     {a.score!==null?a.score.toFixed(1):"—"}
                   </span>
                 </div>
@@ -922,14 +925,14 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
         {/* Issues */}
         {issues.length>0&&(
           <>
-            <p style={{fontSize:9,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>{issues.length} não conformidade{issues.length>1?"s":""}</p>
-            <Card pad="0" radius={18} style={{background:"#FFFBEB",border:"1px solid #FDE68A",overflow:"hidden"}}>
+            <p style={{fontSize:11,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>{issues.length} não conformidade{issues.length>1?"s":""}</p>
+            <Card pad="0" radius={24} style={{background:"#FFFBEB",border:"1px solid #FDE68A",overflow:"hidden",boxShadow:"0 12px 30px rgba(146,64,14,.08)"}}>
               {issues.map((x,i)=>{const c=SC[x.score];return(
-                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 14px",borderBottom:i<issues.length-1?"1px solid #FEF3C7":"none"}}>
-                  <span style={{fontSize:11,fontWeight:900,padding:"3px 8px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,flexShrink:0,marginTop:1}}>{x.score}</span>
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:11,padding:"12px 14px",borderBottom:i<issues.length-1?"1px solid #FEF3C7":"none"}}>
+                  <span style={{fontSize:12,fontWeight:900,padding:"4px 9px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,flexShrink:0,marginTop:1}}>{x.score}</span>
                   <div>
-                    <p style={{fontSize:9,fontWeight:700,color:x.areaColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:2}}>{x.area}{x.room?` #${x.room}`:""}</p>
-                    <p style={{fontSize:12,color:INK2,lineHeight:1.4}}>{x.item}</p>
+                    <p style={{fontSize:11,fontWeight:700,color:x.areaColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3,lineHeight:1.3}}>{x.area}{x.room?` #${x.room}`:""}</p>
+                    <p style={{fontSize:13.5,color:INK2,lineHeight:1.45}}>{x.item}</p>
                   </div>
                 </div>);})}
             </Card>
@@ -938,12 +941,12 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
 
         {/* Observations */}
         {areaScores.some(a=>a.notes)&&(
-          <Card pad="1rem" radius={18}>
-            <p style={{fontSize:9,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Observações</p>
+          <Card pad="1rem" radius={24}>
+            <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8}}>Observações</p>
             {areaScores.filter(a=>a.notes).map(a=>(
               <div key={a.id} style={{marginBottom:6}}>
-                <p style={{fontSize:9,fontWeight:700,color:a.color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>{a.short}{a.room?` #${a.room}`:""}</p>
-                <p style={{fontSize:12,color:MUTED,lineHeight:1.5}}>{a.notes}</p>
+                <p style={{fontSize:11,fontWeight:700,color:a.color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3,lineHeight:1.3}}>{a.short}{a.room?` #${a.room}`:""}</p>
+                <p style={{fontSize:13.5,color:MUTED,lineHeight:1.6}}>{a.notes}</p>
               </div>
             ))}
           </Card>
@@ -951,19 +954,19 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
 
         {/* Alert */}
         {!passed&&(
-          <div style={{background:urgent?"#FEF2F2":"#FFFBEB",border:`1.5px solid ${urgent?"#FECACA":"#FDE68A"}`,borderRadius:16,padding:"13px 15px"}}>
-            <p style={{fontSize:12,fontWeight:900,color:urgent?"#991B1B":"#92400E",marginBottom:4}}>
+          <div style={{background:urgent?"#FEF2F2":"#FFFBEB",border:`1.5px solid ${urgent?"#FECACA":"#FDE68A"}`,borderRadius:22,padding:"15px 16px",boxShadow:urgent?"0 12px 30px rgba(153,27,27,.08)":"0 12px 30px rgba(146,64,14,.08)"}}>
+            <p style={{fontSize:14,fontWeight:900,color:urgent?"#991B1B":"#92400E",marginBottom:5,lineHeight:1.35}}>
               {urgent?"Ação imediata — notificar fornecedor":"Notificar fornecedor"}
             </p>
-            <p style={{fontSize:12,color:urgent?"#B91C1C":"#B45309",lineHeight:1.55}}>
+            <p style={{fontSize:13.5,color:urgent?"#B91C1C":"#B45309",lineHeight:1.6}}>
               {urgent?"Item com nota 0–1 identificado. Correção imediata. Escalada à Direção.":"Nota geral abaixo de 4,0. Envie o relatório ao líder de equipe. Prazo: mesmo dia."}
             </p>
           </div>
         )}
 
         <div style={{display:"flex",gap:8}}>
-          <button onClick={onHome} style={{flex:1,padding:"13px",borderRadius:14,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:13,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>Início</button>
-          <button onClick={onNewAudit} className="btn-scale" style={{flex:1,padding:"13px",borderRadius:14,border:"none",background:INK,color:"#fff",fontSize:13,fontWeight:900,fontFamily:"inherit",cursor:"pointer"}}>Nova auditoria →</button>
+          <button onClick={onHome} style={{flex:1,padding:"14px",minHeight:48,borderRadius:16,border:`1px solid ${RING}`,background:PAPER,color:MUTED,fontSize:14,fontWeight:800,fontFamily:"inherit",cursor:"pointer",boxShadow:SOFT_SHADOW}}>Início</button>
+          <button onClick={onNewAudit} className="btn-scale" style={{flex:1,padding:"14px",minHeight:48,borderRadius:16,border:"none",background:INK,color:"#fff",fontSize:14,fontWeight:900,fontFamily:"inherit",cursor:"pointer",boxShadow:"0 14px 28px rgba(15,23,42,.2)"}}>Nova auditoria →</button>
         </div>
       </div>
     </div>
@@ -991,22 +994,22 @@ function DashboardScreen({onBack,history}){
   }).filter(a=>a.score!==null&&a.score<4);
 
   const CT=({active,payload,label})=>active&&payload?.length?(
-    <div style={{background:PAPER,border:`1px solid ${RING}`,borderRadius:10,padding:"8px 12px",fontSize:12}}>
+    <div style={{background:PAPER,border:`1px solid ${RING}`,borderRadius:10,padding:"8px 12px",fontSize:13}}>
       <p style={{fontWeight:700,color:INK,marginBottom:2}}>{label}</p>
       <p style={{color:MUTED}}>Nota: {payload[0]?.value?.toFixed(2)||"—"}</p>
     </div>):null;
 
   return(
     <div className="au">
-      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.85rem 1rem",display:"flex",alignItems:"center",gap:12}}>
-        <button onClick={onBack} style={{width:32,height:32,borderRadius:10,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:14,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
+      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 22px rgba(15,23,42,.04)"}}>
+        <button onClick={onBack} style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
         <div style={{flex:1}}>
-          <p style={{fontSize:15,fontWeight:900,color:INK,letterSpacing:"-0.02em"}}>Dashboard</p>
-          <p style={{fontSize:10,color:FAINT}}>{SHEETS_ON?"Sincronizado com Google Sheets":"Dados locais neste dispositivo"}</p>
+          <p style={{fontSize:16,fontWeight:900,color:INK,letterSpacing:"-0.02em"}}>Dashboard</p>
+          <p style={{fontSize:12,color:FAINT,lineHeight:1.35,marginTop:2}}>{SHEETS_ON?"Sincronizado com Google Sheets":"Dados locais neste dispositivo"}</p>
         </div>
       </div>
 
-      <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{padding:"1rem",display:"flex",flexDirection:"column",gap:12}}>
         {/* KPI grid */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
           {[
@@ -1014,43 +1017,43 @@ function DashboardScreen({onBack,history}){
             ["Semana",weekAvg?weekAvg.toFixed(1):"—","média geral",false],
             ["Alertas",weekAlerts||"0","abaixo de 4,0",weekAlerts>0],
           ].map(([title,val,sub,isAlert])=>(
-            <Card key={title} pad="12px 10px" style={{border:`1px solid ${isAlert?"#FDE68A":RING}`,background:isAlert?"#FFFBEB":PAPER}}>
-              <p style={{fontSize:9,color:FAINT,marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em"}}>{title}</p>
-              <p style={{fontSize:22,fontWeight:900,color:isAlert?"#D97706":INK,letterSpacing:"-0.04em",lineHeight:1}}>{val}</p>
-              <p style={{fontSize:9,color:FAINT,marginTop:5}}>{sub}</p>
+            <Card key={title} pad="14px 10px" radius={22} style={{border:`1px solid ${isAlert?"#FDE68A":RING}`,background:isAlert?"#FFFBEB":PAPER,boxShadow:isAlert?"0 12px 28px rgba(217,119,6,.08)":SOFT_SHADOW}}>
+              <p style={{fontSize:11,color:FAINT,marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",lineHeight:1.2}}>{title}</p>
+              <p style={{fontSize:26,fontWeight:900,color:isAlert?"#D97706":INK,letterSpacing:"-0.05em",lineHeight:.95}}>{val}</p>
+              <p style={{fontSize:11,color:FAINT,marginTop:5,lineHeight:1.25}}>{sub}</p>
             </Card>
           ))}
         </div>
 
         {/* Trend chart */}
         {trendData.some(d=>d.count>0)&&(
-          <DarkCard>
-            <p style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:4}}>Tendência</p>
+          <DarkCard pad="1.25rem" radius={28}>
+            <p style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:4}}>Tendência</p>
             <p style={{fontSize:16,fontWeight:900,color:"#fff",letterSpacing:"-0.03em",marginBottom:14}}>Nota média — 7 dias</p>
-            <ResponsiveContainer width="100%" height={120}>
+            <ResponsiveContainer width="100%" height={136}>
               <LineChart data={trendData} margin={{top:4,right:4,left:-24,bottom:0}}>
-                <XAxis dataKey="day" tick={{fontSize:9,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
-                <YAxis domain={[2,5]} tick={{fontSize:9,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
+                <XAxis dataKey="day" tick={{fontSize:11,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
+                <YAxis domain={[2,5]} tick={{fontSize:11,fill:"rgba(255,255,255,.4)"}} axisLine={false} tickLine={false}/>
                 <Tooltip content={<CT/>}/>
                 <ReferenceLine y={4} stroke="rgba(255,255,255,.3)" strokeDasharray="3 3" strokeWidth={1.5}/>
                 <Line type="monotone" dataKey="score" stroke="#10B981" strokeWidth={2.5} dot={{r:3,fill:"#10B981"}} connectNulls/>
               </LineChart>
             </ResponsiveContainer>
-            <p style={{fontSize:9,color:"rgba(255,255,255,.35)",marginTop:6}}>Linha = padrão mínimo 4,0</p>
+            <p style={{fontSize:11,color:"rgba(255,255,255,.35)",marginTop:6,lineHeight:1.35}}>Linha = padrão mínimo 4,0</p>
           </DarkCard>
         )}
 
         {/* Below standard areas */}
         {belowAreas.length>0&&(
           <>
-            <p style={{fontSize:9,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>Áreas abaixo de 4,0 esta semana</p>
-            <Card pad="0" radius={20} style={{overflow:"hidden"}}>
+            <p style={{fontSize:11,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.14em"}}>Áreas abaixo de 4,0 esta semana</p>
+            <Card pad="0" radius={24} style={{overflow:"hidden"}}>
               {belowAreas.map((a,i)=>{const c=scoreColor(a.score);return(
                 <div key={a.id} style={{display:"flex",alignItems:"center",gap:0,borderBottom:i<belowAreas.length-1?`1px solid ${RING}`:"none"}}>
-                  <div style={{width:4,alignSelf:"stretch",background:a.color,flexShrink:0}}/>
-                  <div style={{display:"flex",alignItems:"center",gap:10,flex:1,padding:"10px 12px"}}>
-                    <span style={{flex:1,fontSize:12,fontWeight:600,color:INK}}>{a.short}</span>
-                    <span style={{fontSize:13,fontWeight:900,padding:"2px 12px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`}}>{a.score.toFixed(1)}</span>
+                  <div style={{width:5,alignSelf:"stretch",background:a.color,flexShrink:0}}/>
+                  <div style={{display:"flex",alignItems:"center",gap:10,flex:1,padding:"12px 13px"}}>
+                    <span style={{flex:1,fontSize:13.5,fontWeight:600,color:INK,lineHeight:1.35}}>{a.short}</span>
+                    <span style={{fontSize:14,fontWeight:900,padding:"4px 12px",borderRadius:99,background:c.bg,color:c.tx,border:`1px solid ${c.br}`,lineHeight:1.2}}>{a.score.toFixed(1)}</span>
                   </div>
                 </div>);})}
             </Card>
@@ -1059,8 +1062,8 @@ function DashboardScreen({onBack,history}){
 
         {history.length===0&&(
           <div style={{textAlign:"center",padding:"2.5rem 1rem"}}>
-            <p style={{fontSize:14,fontWeight:700,color:INK,marginBottom:6}}>Nenhuma auditoria ainda.</p>
-            <p style={{fontSize:12,color:MUTED}}>Faça a primeira auditoria para ver os dados aqui.</p>
+            <p style={{fontSize:15,fontWeight:700,color:INK,marginBottom:6}}>Nenhuma auditoria ainda.</p>
+            <p style={{fontSize:13,color:MUTED,lineHeight:1.45}}>Faça a primeira auditoria para ver os dados aqui.</p>
           </div>
         )}
       </div>
@@ -1074,34 +1077,34 @@ function HistoryScreen({history,onBack,onView}){
   const grouped=sorted.reduce((acc,a)=>{if(!acc[a.date])acc[a.date]=[];acc[a.date].push(a);return acc;},{});
   return(
     <div className="au">
-      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.85rem 1rem",display:"flex",alignItems:"center",gap:12}}>
-        <button onClick={onBack} style={{width:32,height:32,borderRadius:10,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:14,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
-        <p style={{fontSize:15,fontWeight:900,color:INK,letterSpacing:"-0.02em",flex:1}}>Histórico</p>
-        <span style={{fontSize:10,color:FAINT}}>{sorted.length} auditorias</span>
+      <div style={{background:PAPER,borderBottom:`1px solid ${RING}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 22px rgba(15,23,42,.04)"}}>
+        <button onClick={onBack} style={{width:42,height:42,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
+        <p style={{fontSize:16,fontWeight:900,color:INK,letterSpacing:"-0.02em",flex:1}}>Histórico</p>
+        <span style={{fontSize:12,color:FAINT}}>{sorted.length} auditorias</span>
       </div>
       {sorted.length===0
-        ?<div style={{padding:"3rem",textAlign:"center",color:FAINT,fontSize:13}}>Nenhuma auditoria registrada.</div>
+        ?<div style={{padding:"3rem",textAlign:"center",color:FAINT,fontSize:14,lineHeight:1.45}}>Nenhuma auditoria registrada.</div>
         :(
-          <div style={{padding:"0.75rem 1rem"}}>
+          <div style={{padding:"0.9rem 1rem"}}>
             {Object.entries(grouped).map(([date,audits])=>(
               <div key={date} style={{marginBottom:"1.25rem"}}>
-                <p style={{fontSize:10,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>{fmtDate(date)}</p>
-                <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                <p style={{fontSize:11,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>{fmtDate(date)}</p>
+                <div style={{display:"flex",flexDirection:"column",gap:9}}>
                   {audits.map(a=>{
                     const sc_=scoreColor(a.overallScore);
                     const slot=SLOTS.find(s=>s.id===a.slotId);
                     return(
-                      <Card key={a.id} pad="0" radius={18} style={{overflow:"hidden",cursor:"pointer"}} onClick={()=>onView(a)}>
+                      <Card key={a.id} pad="0" radius={24} style={{overflow:"hidden",cursor:"pointer"}} onClick={()=>onView(a)}>
                         <div className="tap" style={{display:"flex",alignItems:"center",gap:0}}>
-                          <div style={{width:4,alignSelf:"stretch",background:a.overallScore>=4?"#10B981":a.overallScore>=3?"#F59E0B":"#F43F5E",borderRadius:"18px 0 0 18px",flexShrink:0}}/>
-                          <div style={{display:"flex",alignItems:"center",gap:12,flex:1,padding:"12px 14px 12px 12px"}}>
-                            <div style={{width:44,height:44,borderRadius:12,background:sc_.bg,border:`1.5px solid ${sc_.br}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          <div style={{width:5,alignSelf:"stretch",background:a.overallScore>=4?"#10B981":a.overallScore>=3?"#F59E0B":"#F43F5E",borderRadius:"24px 0 0 24px",flexShrink:0}}/>
+                          <div style={{display:"flex",alignItems:"center",gap:13,flex:1,padding:"14px 15px 14px 13px"}}>
+                            <div style={{width:50,height:50,borderRadius:16,background:sc_.bg,border:`1.5px solid ${sc_.br}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 6px 16px rgba(15,23,42,.06)"}}>
                               <span style={{fontSize:15,fontWeight:900,color:sc_.tx,lineHeight:1}}>{a.overallScore.toFixed(1)}</span>
-                              <span style={{fontSize:7,color:sc_.tx,opacity:.6}}>/5</span>
+                              <span style={{fontSize:10.5,color:sc_.tx,opacity:.6}}>/5</span>
                             </div>
                             <div style={{flex:1,minWidth:0}}>
-                              <p style={{fontSize:13,fontWeight:700,color:INK,marginBottom:1}}>{slot?.time} · {slot?.label}</p>
-                              <p style={{fontSize:11,color:MUTED}}>{a.auditor}</p>
+                              <p style={{fontSize:14,fontWeight:700,color:INK,marginBottom:2,lineHeight:1.3}}>{slot?.time} · {slot?.label}</p>
+                              <p style={{fontSize:12,color:MUTED,lineHeight:1.35}}>{a.auditor}</p>
                             </div>
                             <Pill tone={a.overallScore>=4?"good":"bad"}>{a.overallScore>=4?"OK":"⚠"}</Pill>
                           </div>
@@ -1142,7 +1145,9 @@ export default function EspacosApp(){
     const entry={id:Date.now().toString(),timestamp:Date.now(),campus:"SP",date,slotId:slot.id,slotLabel:slot.label,overallScore,areas:audit.areas,auditor};
     const updated=[...history.filter(a=>!(a.date===date&&a.slotId===slot.id)),entry];
     lhSave(updated);setHistory(updated);
-    saveToSheets(entry).catch(()=>{qAdd(entry);setPending(p=>p+1);});
+    if(SHEETS_ON){
+      saveToSheets(entry).catch(()=>{qAdd(entry);setPending(p=>p+1);});
+    }
     setViewData(entry);setScreen("summary");
   };
 
