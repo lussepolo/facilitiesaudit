@@ -486,6 +486,7 @@ async function saveToSheets(entry){
     auditor:entry.auditor,area_id:a.id,area_label:a.label,
     room_number:entry.areas[a.id]?.roomNumber||"",
     area_score:(()=>{const it=(entry.areas[a.id]?.items||[]).filter(s=>s!==null);return it.length?parseFloat(avg(it).toFixed(2)):null;})(),
+    item_scores:JSON.stringify(a.items.map(([item],i)=>({item,score:entry.areas[a.id]?.items?.[i]??null}))),
     overall_score:entry.overallScore!==null&&entry.overallScore!==undefined?parseFloat(entry.overallScore.toFixed(2)):null,
     notes:entry.areas[a.id]?.notes||"",
     photo_data:entry.areas[a.id]?.photo||null,
