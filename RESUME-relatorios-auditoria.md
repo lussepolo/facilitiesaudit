@@ -123,3 +123,11 @@ Mockups with real September data, in the brainstorm folder:
 - Local harness: scratchpad `local/run.js` (Node vm over Code.gs + Assets + Relatorios with CSV snapshot).
 - 518 vs 520 records: 2 Sept rows are `progress` saves; excluded like the existing daily report.
 - Remaining after Luciana approves: wire daily (try Concept, fallback to sheet PDF), test email to luciana only, create Friday 16h trigger, remove TempHook.js + doGet hook, new version + move @4 to it, re-clone diff, commit + push (Netlify auto-deploys app item_scores from main).
+
+## 9. LIVE (2026-10-26, 16:20)
+- Script v6.0 live, version 9. App deployment (AKfycbxIoJYb…) on @9. Temp hook removed and confirmed gone; re-clone identical to apps-script/.
+- Daily 17:30 PDF now Concept design (fallback to sheet export on error). Test email to Luciana only: OK (Concept fonts confirmed).
+- Weekly trigger `sendWeeklyRecommendationsReport` created under Luciana's account: Friday ~16:00 → robson.lopes@, PDF to Drive folder. First real run: Fri 2026-10-30 (covers 23–29/10).
+- OPEN: Luciana's account had NO triggers before; the 17:30 daily trigger must belong to someone else (or not exist). Check in Apps Script editor → Acionadores ("Mostrar acionadores de todos os usuários").
+- Commit 24a09da pushed to main; Netlify deploy of the item_scores app change in progress.
+- Supplier follow-up still undecided.
