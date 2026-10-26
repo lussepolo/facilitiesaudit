@@ -454,6 +454,8 @@ function resizePhoto(file){
 }
 
 const Q_KEY="ec_q_v5",LH_KEY="ec_lh_v5",DRAFT_KEY="ec_draft_v1";
+const LAST_SYNC_KEY="ec_last_sync";
+const APP_VERSION="v6.0";
 const qLoad=()=>{try{return JSON.parse(localStorage.getItem(Q_KEY)||"[]");}catch{return[];}};
 const qSave=q=>{try{localStorage.setItem(Q_KEY,JSON.stringify(q));}catch{}};
 const qAdd=e=>{const q=qLoad();q.push(e);qSave(q);};
@@ -495,6 +497,7 @@ async function saveToSheets(entry){
   // Apps Script currently appends rows. The stable IDs above allow a future
   // backend upsert to replace progress rows with final rows by area.
   await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows})});
+  try{localStorage.setItem(LAST_SYNC_KEY,new Date().toISOString());}catch{}
   return true;
 }
 
@@ -645,13 +648,13 @@ function MetricCard({label,value,tone="neutral"}){
   );
 }
 
-function BottomNav({active,onAudit,onAreas,onIndicadores}){
+function BottomNav({active,onAudit,onAreas,onIndicadores,onAjustes}){
   const items=[
     ["Auditoria",onAudit],
     ["Áreas",onAreas],
     ["Indicadores",onIndicadores],
     ["Fornecedores",null],
-    ["Ajustes",null],
+    ["Ajustes",onAjustes],
   ];
   return(
     <div className="bottom-nav" style={{position:"sticky",bottom:0,zIndex:30,background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderTop:`1px solid ${GLASS_BORDER}`,boxShadow:"0 -18px 42px rgba(17,24,39,.12)",padding:"9px 8px calc(11px + env(safe-area-inset-bottom))",display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:4,overflow:"hidden"}}>
@@ -748,7 +751,7 @@ function RecoveryScreen({draft,onContinue,onDiscard}){
 }
 
 // ─── Tela: Home ───────────────────────────────────────────────────────────────
-function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,pending}){
+function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,onSettings,pending}){
   const dayAudits=history.filter(a=>a.date===date);
   const dayAvg=avg(dayAudits.map(a=>a.overallScore).filter(Boolean));
   const alerts=dayAudits.filter(a=>a.overallScore<4).length;
@@ -895,7 +898,7 @@ function HomeScreen({date,history,auditor,onStart,onView,onDashboard,onHistory,p
           </button>
         </div>
       </div>
-      <BottomNav active="Auditoria" onAudit={()=>{}} onAreas={onHistory} onIndicadores={onDashboard}/>
+      <BottomNav active="Auditoria" onAudit={()=>{}} onAreas={onHistory} onIndicadores={onDashboard} onAjustes={onSettings}/>
     </div>
   );
 }
@@ -1158,7 +1161,7 @@ function SummaryScreen({auditData,onHome,onNewAudit}){
 }
 
 // ─── Tela: Dashboard ──────────────────────────────────────────────────────────
-function DashboardScreen({onBack,onAreas,history}){
+function DashboardScreen({onBack,onAreas,onSettings,history}){
   const today=todaySP();const weekStart=startOfWeek(today);
   const todayA=history.filter(a=>a.date===today);
   const weekA=history.filter(a=>a.date>=weekStart);
@@ -1259,13 +1262,13 @@ function DashboardScreen({onBack,onAreas,history}){
           </Card>
         )}
       </div>
-      <BottomNav active="Indicadores" onAudit={onBack} onAreas={onAreas} onIndicadores={()=>{}}/>
+      <BottomNav active="Indicadores" onAudit={onBack} onAreas={onAreas} onIndicadores={()=>{}} onAjustes={onSettings}/>
     </div>
   );
 }
 
 // ─── Tela: Histórico ──────────────────────────────────────────────────────────
-function HistoryScreen({history,onBack,onDashboard,onView}){
+function HistoryScreen({history,onBack,onDashboard,onSettings,onView}){
   const sorted=[...history].sort((a,b)=>b.timestamp-a.timestamp).slice(0,80);
   const grouped=sorted.reduce((acc,a)=>{if(!acc[a.date])acc[a.date]=[];acc[a.date].push(a);return acc;},{});
   return(
@@ -1313,7 +1316,69 @@ function HistoryScreen({history,onBack,onDashboard,onView}){
             ))}
           </div>
         )}
-      <BottomNav active="Áreas" onAudit={onBack} onAreas={()=>{}} onIndicadores={onDashboard}/>
+      <BottomNav active="Áreas" onAudit={onBack} onAreas={()=>{}} onIndicadores={onDashboard} onAjustes={onSettings}/>
+    </div>
+  );
+}
+
+// ─── Tela: Ajustes ────────────────────────────────────────────────────────────
+function SettingsScreen({auditor,pending,onBack,onChangeName,onSyncNow,onAreas,onDashboard}){
+  const[syncing,setSyncing]=useState(false);
+  const[lastSync,setLastSync]=useState(()=>{try{return localStorage.getItem(LAST_SYNC_KEY)||"";}catch{return"";}});
+  const fmtSync=iso=>{
+    if(!iso)return"Nenhum envio registrado neste aparelho";
+    const d=new Date(iso);
+    const day=d.toLocaleDateString("sv-SE",{timeZone:"America/Sao_Paulo"})===todaySP()?"hoje":d.toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit"});
+    return`Último envio: ${day} ${d.toLocaleTimeString("pt-BR",{timeZone:"America/Sao_Paulo",hour:"2-digit",minute:"2-digit"})}`;
+  };
+  const sendNow=async()=>{
+    setSyncing(true);
+    try{await onSyncNow();}finally{
+      setSyncing(false);
+      try{setLastSync(localStorage.getItem(LAST_SYNC_KEY)||"");}catch{}
+    }
+  };
+  const label={fontSize:14,fontWeight:700,color:FAINT,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:8};
+  const value={fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",lineHeight:1.25};
+  const button={minHeight:44,padding:"0 16px",borderRadius:14,border:`1px solid ${RING}`,background:SHEET,color:INK,fontSize:15,fontWeight:800,fontFamily:"inherit",cursor:"pointer",flexShrink:0};
+  return(
+    <div className="au" style={{minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+      <div style={{background:GLASS_SURFACE,backdropFilter:GLASS_BLUR,WebkitBackdropFilter:GLASS_BLUR,borderBottom:`1px solid ${GLASS_BORDER}`,padding:"0.95rem 1rem",display:"flex",alignItems:"center",gap:12,boxShadow:"0 12px 30px rgba(17,24,39,.08)"}}>
+        <button onClick={onBack} style={{width:44,height:44,borderRadius:14,background:SHEET,border:`1px solid ${RING}`,color:INK,cursor:"pointer",fontSize:17,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 12px rgba(15,23,42,.05)"}}>←</button>
+        <p style={{fontSize:18,fontWeight:900,color:INK,letterSpacing:"-0.03em",flex:1}}>Ajustes</p>
+      </div>
+      <div style={{padding:"0.9rem 1rem",display:"flex",flexDirection:"column",gap:12,flex:1}}>
+        <Card radius={24}>
+          <p style={label}>Auditor</p>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+            <p style={value}>{auditor||"—"}</p>
+            <button onClick={onChangeName} style={button}>Trocar</button>
+          </div>
+          <p style={{fontSize:14,color:MUTED,lineHeight:1.5,marginTop:6}}>Nome usado nas auditorias feitas neste aparelho.</p>
+        </Card>
+        <Card radius={24}>
+          <p style={label}>Planilha</p>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+            <span style={{width:10,height:10,borderRadius:99,background:SHEETS_ON?"#16A34A":"#D97706",flexShrink:0}}/>
+            <p style={value}>{SHEETS_ON?"Conectada":"Não configurada"}</p>
+          </div>
+          <p style={{fontSize:14,color:MUTED,lineHeight:1.5}}>{SHEETS_ON?fmtSync(lastSync):"Os dados ficam salvos só neste aparelho."}</p>
+        </Card>
+        <Card radius={24}>
+          <p style={label}>Aguardando envio</p>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+            <p style={value}>{pending} registro{pending===1?"":"s"}</p>
+            {SHEETS_ON&&pending>0&&<button onClick={sendNow} disabled={syncing} style={{...button,background:syncing?SHEET:BLUE,color:syncing?MUTED:"#fff",border:"none"}}>{syncing?"Enviando…":"Enviar agora"}</button>}
+          </div>
+          <p style={{fontSize:14,color:MUTED,lineHeight:1.5,marginTop:6}}>{pending>0?"Ficaram guardados por falta de conexão. O app também tenta reenviar ao abrir.":"Tudo enviado."}</p>
+        </Card>
+        <Card radius={24}>
+          <p style={label}>Versão</p>
+          <p style={value}>{APP_VERSION} · notas por item ativas</p>
+          <p style={{fontSize:14,color:MUTED,lineHeight:1.5,marginTop:6}}>Cada item do checklist é enviado com a sua nota para os relatórios.</p>
+        </Card>
+      </div>
+      <BottomNav active="Ajustes" onAudit={onBack} onAreas={onAreas} onIndicadores={onDashboard} onAjustes={()=>{}}/>
     </div>
   );
 }
@@ -1440,7 +1505,7 @@ export default function EspacosApp(){
         {screen==="home"    &&<HomeScreen date={date} history={history} auditor={auditor} pending={pending}
           onStart={s=>{setSlot(s);setAudit({...emptyAudit(),auditId:`${date}-${s.id}-${Date.now()}`});setAreaIdx(0);setScreen("audit");}}
           onView={a=>{setViewData(a);setScreen("summary");}}
-          onDashboard={()=>setScreen("dashboard")} onHistory={()=>setScreen("history")}/>}
+          onDashboard={()=>setScreen("dashboard")} onHistory={()=>setScreen("history")} onSettings={()=>setScreen("settings")}/>}
         {screen==="audit"   &&audit&&slot&&<AuditScreen slot={slot} areaIdx={areaIdx} audit={audit}
           saveState={saveState}
           onScore={hScore} onNotes={hNotes} onPhoto={hPhoto} onRoomNumber={hRoom}
@@ -1448,8 +1513,11 @@ export default function EspacosApp(){
           onPrev={()=>areaIdx===0?setScreen("home"):setAreaIdx(i=>i-1)}
           onDone={completeAudit}/>}
         {screen==="summary" &&viewData&&<SummaryScreen auditData={viewData} onHome={()=>setScreen("home")} onNewAudit={()=>setScreen("home")}/>}
-        {screen==="dashboard"&&<DashboardScreen onBack={()=>setScreen("home")} onAreas={()=>setScreen("history")} history={history}/>}
-        {screen==="history" &&<HistoryScreen history={history} onBack={()=>setScreen("home")} onDashboard={()=>setScreen("dashboard")} onView={a=>{setViewData(a);setScreen("summary");}}/>}
+        {screen==="dashboard"&&<DashboardScreen onBack={()=>setScreen("home")} onAreas={()=>setScreen("history")} onSettings={()=>setScreen("settings")} history={history}/>}
+        {screen==="settings"&&<SettingsScreen auditor={auditor} pending={pending} onBack={()=>setScreen("home")}
+          onChangeName={()=>setScreen("name")} onAreas={()=>setScreen("history")} onDashboard={()=>setScreen("dashboard")}
+          onSyncNow={async()=>{await syncQueue();setPending(qLoad().length);}}/>}
+        {screen==="history" &&<HistoryScreen history={history} onBack={()=>setScreen("home")} onDashboard={()=>setScreen("dashboard")} onSettings={()=>setScreen("settings")} onView={a=>{setViewData(a);setScreen("summary");}}/>}
       </div>
     </>
   );
